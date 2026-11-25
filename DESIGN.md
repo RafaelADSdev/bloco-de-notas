@@ -185,7 +185,8 @@ Instrument Serif tem peso 400 e itálico autêntico. DM Sans Variable sustenta o
 
 - **Biblioteca.** Barra lateral fixa na rolagem, barra superior e conteúdo central limitado a 1320px. Busca, filtro por tipo de arquivo e ordenação antecedem a coleção. A navegação vira gaveta sobreposta até 820px. A grade passa de três colunas para duas até 550px, com busca em linha própria e espaço para títulos em duas linhas.
 - **Editores.** Cabeçalho e rodapé delimitam a área de trabalho. As ferramentas ficam junto ao documento em uma faixa horizontal rolável. O painel de páginas vira sobreposição até 700px.
-- **Estúdio de desenho.** O palco flexível fica entre pincéis e camadas. Até 760px, os painéis abrem sobre o palco, as ferramentas se agrupam em linhas e as ações de criar e salvar ficam na segunda linha do cabeçalho.
+- **Estúdio de desenho.** No desktop, o palco fica entre pincéis e camadas. Em telas compactas, a tela de desenho fica sobre um fundo claro com controles translúcidos, pincéis ilustrados na lateral e painéis escuros para cor, guias e camadas. No APK em retrato, os comandos frequentes ficam abaixo da folha e os painéis entram pela base. Em paisagem, os comandos e pincéis passam para a esquerda e a visualização para a direita. A rotação do aparelho reenquadra o desenho aberto.
+- **Android.** A tela inicial é a Biblioteca, com quatro destinos na barra inferior e criação acima dela. Em paisagem, a barra de navegação vai para a lateral. Cadernos e notas deixam a página ocupar o centro, com comandos frequentes em uma barra de toque e opções secundárias em painéis.
 - **Meus desenhos.** Uma tela própria reúne prévias proporcionais dos desenhos, com nome e tamanho do quadro. A ação principal cria outro desenho. A grade passa de três para duas colunas até 550px.
 - **Abertura.** Composição em duas colunas com texto e fotografia em moldura fina. Até 720px, a fotografia vira uma faixa horizontal abaixo das ações.
 

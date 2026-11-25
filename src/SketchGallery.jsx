@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, Images, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Check, Images, Plus, Trash2, Upload } from 'lucide-react'
 import { Brand, IconButton } from './ui'
+import { isAndroidApp } from './android-platform'
+import { MobileNavigation } from './MobileNavigation'
 import { drawingFrame } from './sketch-model'
 import { drawingThumbnail } from './sketch-render'
 
@@ -47,20 +49,23 @@ function DrawingPreview({ drawing, frame }) {
   </span>
 }
 
-export function SketchGallery({ drawings, active, open, create, remove, leave, storage }) {
+export function SketchGallery({ drawings, active, open, create, importDrawing, importing, remove, leave, storage, navigate }) {
   return <div className="sketch-gallery">
-    <header className="topbar">
+    {!isAndroidApp && <header className="topbar">
       <button type="button" className="back-link" aria-label="Voltar à biblioteca" onClick={leave}><ArrowLeft size={18} />Biblioteca</button>
       <Brand />
-    </header>
+    </header>}
     <main className="workspace">
       <div className="heading-row">
         <h1>Meus desenhos</h1>
-        <button type="button" className="button primary gallery-create" aria-label="Novo desenho" aria-haspopup="dialog" onClick={create}>
-          <Plus size={18} /><span>Novo<span className="gallery-create-suffix"> desenho</span></span>
-        </button>
+        {isAndroidApp ? <IconButton label="Importar projeto" className="android-filter" onClick={importDrawing} disabled={importing}><Upload size={22} /></IconButton> : <div className="gallery-actions">
+          <button type="button" className="button secondary" onClick={importDrawing} disabled={importing}>Importar projeto</button>
+          <button type="button" className="button primary gallery-create" aria-label="Novo desenho" aria-haspopup="dialog" onClick={create}>
+            <Plus size={18} /><span>Novo<span className="gallery-create-suffix"> desenho</span></span>
+          </button>
+        </div>}
       </div>
-      {storage === 'error' && <p className="notice error" role="alert">O navegador não conseguiu carregar ou salvar os desenhos locais.</p>}
+      {storage === 'error' && <p className="notice error" role="alert">Não foi possível carregar ou salvar os desenhos locais.</p>}
       {drawings.length ? <ul className="item-grid drawing-grid" aria-label="Desenhos salvos">
         {drawings.map((drawing) => {
           const frame = drawingFrame(drawing)
@@ -85,5 +90,9 @@ export function SketchGallery({ drawings, active, open, create, remove, leave, s
         <span>Use “Novo desenho” para começar.</span>
       </div>}
     </main>
+    {isAndroidApp && <>
+      <MobileNavigation active="drawings" go={navigate} />
+      <button type="button" className="android-fab" aria-label="Novo desenho" aria-haspopup="dialog" onClick={create}><Plus size={24} /> Novo</button>
+    </>}
   </div>
 }

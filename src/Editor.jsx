@@ -9,6 +9,7 @@ import DrawingSurface from './DrawingSurface'
 import DrawingTools from './DrawingTools'
 import RichEditor from './RichEditor'
 import AudioPanel from './AudioPanel'
+import { isAndroidApp } from './android-platform'
 
 export default function Editor({ item, patch, leave, act, notify, storageError }) {
   const rich = item.type === 'text'
@@ -18,7 +19,7 @@ export default function Editor({ item, patch, leave, act, notify, storageError }
   const [color, setColor] = useState('#28372d')
   const [size, setSize] = useState(4)
   const [zoom, setZoom] = useState(board ? 60 : 100)
-  const [pageSidebar, setPageSidebar] = useState(() => window.innerWidth >= 850 && !board)
+  const [pageSidebar, setPageSidebar] = useState(() => !isAndroidApp && window.innerWidth >= 850 && !board)
   const [readOnly, setReadOnly] = useState(false)
   const [selection, setSelection] = useState([])
   const [stack, setStack] = useState({ past: [], future: [] })
@@ -128,14 +129,19 @@ export default function Editor({ item, patch, leave, act, notify, storageError }
     if (key !== 'lasso') setSelection([])
   }
 
-  return <main className="editor">
+  const zoomControls = <div className="zoom-controls">
+    <IconButton label="Diminuir zoom" disabled={zoom <= 25} onClick={() => setZoom(Math.max(25, zoom - 15))}><ZoomOut size={18} /></IconButton>
+    <button className="page-count" title="Redefinir zoom" onClick={() => setZoom(board ? 60 : 100)}>{zoom}%</button>
+    <IconButton label="Aumentar zoom" disabled={zoom >= 240} onClick={() => setZoom(Math.min(240, zoom + 15))}><ZoomIn size={18} /></IconButton>
+  </div>
+  return <main className={'editor' + (rich ? ' editor-text' : ' editor-pages')}>
     <header className="editor-header">
       <div className="editor-nav">
         <IconButton label="Voltar à biblioteca" onClick={leave}><ArrowLeft size={21} /></IconButton>
         {!rich && <IconButton label="Mostrar páginas" aria-pressed={pageSidebar} onClick={() => setPageSidebar(!pageSidebar)}><PanelLeft size={19} /></IconButton>}
         <div className="editor-heading">
           <button className="editor-title" title={item.title} onClick={() => act('rename')} disabled={readOnly}><span>{item.title}</span><ChevronsUpDown size={13} /></button>
-          <small>{labels[item.type]}<span className="editor-save"> · {storageError ? 'Falha ao salvar' : 'Salvo neste navegador'}</span></small>
+          <small>{labels[item.type]}<span className="editor-save"> · {storageError ? 'Falha ao salvar' : isAndroidApp ? 'Salvo no dispositivo' : 'Salvo neste navegador'}</span></small>
         </div>
       </div>
       <div className="editor-actions">
@@ -148,9 +154,11 @@ export default function Editor({ item, patch, leave, act, notify, storageError }
         <Menu label="Mais opções do documento" trigger={(props) => <button type="button" {...props} className="icon-button" title="Mais opções"><MoreHorizontal size={21} /></button>}>
           <MenuOption icon={ArrowDownToLine} onClick={downloadPdf} disabled={exporting}>Baixar PDF</MenuOption>
           <MenuOption icon={Copy} onClick={saveEditableCopy}>Baixar cópia editável</MenuOption>
+          {isAndroidApp && <MenuOption icon={Star} onClick={() => act('favorite')}>{item.favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}</MenuOption>}
           {rich && <MenuOption icon={Printer} onClick={() => window.print()}>Imprimir documento</MenuOption>}
           <MenuOption icon={Mic} onClick={() => setPanel({ type: 'audio' })}>Gravações de áudio</MenuOption>
           {!rich && <><hr />
+            {isAndroidApp && <MenuOption icon={ZoomIn} onClick={() => setPanel({ type: 'zoom' })}>Ajustar zoom</MenuOption>}
             <MenuOption icon={FilePlus2} onClick={() => addPage()} disabled={readOnly}>Adicionar página</MenuOption>
             <MenuOption icon={Bookmark} onClick={() => updatePage(page.id, { bookmarked: !page.bookmarked })} disabled={readOnly}>{page.bookmarked ? 'Remover marcador da página' : 'Marcar página'}</MenuOption>
             <MenuOption icon={Pencil} onClick={() => setPanel({ type: 'paper' })} disabled={readOnly}>Mudar papel da página</MenuOption>
@@ -165,9 +173,9 @@ export default function Editor({ item, patch, leave, act, notify, storageError }
         undo={undo} redo={redo} canUndo={!!stack.past.length} canRedo={!!stack.future.length} readOnly={readOnly} />
       <div className="drawing-workspace">
         {pageSidebar && <aside className="page-sidebar" aria-label="Páginas">
-          <div className="page-sidebar-head"><h2>Páginas</h2><IconButton label="Fechar páginas" onClick={() => setPageSidebar(false)}><X size={17} /></IconButton></div>
+          <div className="page-sidebar-head"><h2>Páginas</h2><IconButton label="Fechar páginas" data-android-dismiss="" onClick={() => setPageSidebar(false)}><X size={17} /></IconButton></div>
           {item.pages.map((entry, index) => <div className={'page-outline' + (page.id === entry.id ? ' page-active' : '')} key={entry.id}>
-            <button className="page-thumbnail-button" onClick={() => { choosePage(entry.id); if (window.innerWidth <= 700) setPageSidebar(false) }}
+            <button className="page-thumbnail-button" onClick={() => { choosePage(entry.id); if (isAndroidApp || window.innerWidth <= 700) setPageSidebar(false) }}
               aria-label={'Ir para página ' + (index + 1)} aria-current={page.id === entry.id ? 'page' : undefined}>
               <span className={'page-thumbnail paper-' + entry.paper} aria-hidden="true">{entry.pdfPage !== undefined ? 'PDF' : entry.items.length > 0 && <Pencil size={14} />}</span>
               <span>{index + 1}{entry.bookmarked && <Bookmark size={13} fill="currentColor" aria-label="Marcador" />}</span>
@@ -208,13 +216,12 @@ export default function Editor({ item, patch, leave, act, notify, storageError }
           <IconButton label="Próxima página" disabled={pageIndex + 1 === item.pages.length} onClick={() => choosePage(item.pages[pageIndex + 1].id)}><ChevronRight size={17} /></IconButton>
           {!readOnly && <IconButton label="Nova página" onClick={() => addPage()}><Plus size={17} /></IconButton>}
         </div>
-        <div className="zoom-controls">
-          <IconButton label="Diminuir zoom" disabled={zoom <= 25} onClick={() => setZoom(Math.max(25, zoom - 15))}><ZoomOut size={18} /></IconButton>
-          <button className="page-count" title="Redefinir zoom" onClick={() => setZoom(board ? 60 : 100)}>{zoom}%</button>
-          <IconButton label="Aumentar zoom" disabled={zoom >= 240} onClick={() => setZoom(Math.min(240, zoom + 15))}><ZoomIn size={18} /></IconButton>
-        </div>
+        {isAndroidApp ? <IconButton label="Ajustar zoom" onClick={() => setPanel({ type: 'zoom' })}><ZoomIn size={19} /></IconButton> : zoomControls}
       </footer>
     </>}
+    {panel?.type === 'zoom' && <Dialog title="Zoom da página" close={() => setPanel(null)}>{zoomControls}
+      <div className="dialog-actions"><button type="button" className="button primary" onClick={() => setPanel(null)}>Concluir</button></div>
+    </Dialog>}
     {panel?.type === 'audio' && <AudioPanel item={item} patch={patch} close={() => setPanel(null)} readOnly={readOnly} notify={notify} />}
     {panel?.type === 'annotation' && <Dialog title={panel.objectType === 'sticky' ? 'Nota adesiva' : 'Texto na página'} close={() => setPanel(null)}>
       <form onSubmit={(event) => {

@@ -5,6 +5,7 @@ import { CreateDialog, Dialog, IconButton } from './ui'
 import { Welcome } from './Welcome'
 import { descendants, downloadBackup, isTrashed, newItem, readBackup, starterItems, uid } from './model'
 import { readLibrary, writeLibrary } from './storage'
+import { isAndroidApp, styleAndroidBars } from './android-platform'
 
 const Editor = lazy(() => import('./Editor'))
 const SketchStudio = lazy(() => import('./SketchStudio'))
@@ -17,7 +18,7 @@ function currentRoute() {
   return {
     page: !path || path === '/login' ? 'welcome' : path === '/editor' ? 'editor' : 'library',
     doc: params.get('id'), folder: params.get('folder'),
-    section: ['favorites', 'trash', 'studio', 'drawings'].includes(section) ? section : 'home',
+    section: ['favorites', 'trash', 'studio', 'drawings'].includes(section) || (isAndroidApp && section === 'settings') ? section : 'home',
   }
 }
 
@@ -44,7 +45,9 @@ export default function App() {
       setItems(latest.current)
       if (saved === undefined) persist(latest.current)
     }).catch(() => {
-      if (!cancelled) setStorageError('O navegador bloqueou o armazenamento. Baixe uma cópia antes de fechar a página.')
+      if (!cancelled) setStorageError(isAndroidApp
+        ? 'Não foi possível acessar os arquivos deste dispositivo.'
+        : 'O navegador bloqueou o armazenamento. Baixe uma cópia antes de fechar a página.')
     }).finally(() => { if (!cancelled) setReady(true) })
     return () => { cancelled = true }
   }, [])
@@ -58,10 +61,51 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    document.querySelector('meta[name="theme-color"]').content = theme === 'light' ? '#f6f0e6' : '#181715'
+    styleAndroidBars(theme, route.page === 'library' && route.section === 'studio')
+  }, [theme, route.page, route.section])
+
+  useEffect(() => {
+    if (!isAndroidApp) return
+    function androidBack(event) {
+      const modal = [...document.querySelectorAll('dialog[open]')].at(-1)
+      const menu = document.querySelector('.menu-anchor > button[aria-expanded="true"]')
+      const dismiss = document.querySelector('[data-android-dismiss]')
+      if (modal || menu || dismiss) {
+        event.preventDefault()
+        if (modal && (!menu || !modal.contains(menu))) {
+          modal.dispatchEvent(new Event('cancel', { cancelable: true }))
+        } else (menu ?? dismiss).click()
+        return
+      }
+      if (document.querySelector('.studio-app:not([hidden]) [data-status="recording"]')) {
+        event.preventDefault()
+        notify('Finalize a gravação antes de voltar.')
+        return
+      }
+      if (route.page === 'editor') {
+        event.preventDefault()
+        const item = latest.current.find(({ id }) => id === route.doc)
+        library(route.section, route.section === 'home' ? item?.parent : null, true)
+      } else if (route.section === 'studio') {
+        event.preventDefault()
+        library('drawings', null, true)
+      } else if (route.section !== 'home' || route.folder) {
+        event.preventDefault()
+        const folder = latest.current.find(({ id }) => id === route.folder)
+        library('home', folder?.parent, true)
+      }
+    }
+    window.addEventListener('linha-clara:back', androidBack)
+    return () => window.removeEventListener('linha-clara:back', androidBack)
+  }, [route])
+
   function persist(next) {
     return writeLibrary(next).then(
       () => setStorageError(''),
-      () => setStorageError('Não foi possível salvar no navegador. Baixe uma cópia para guardar as mudanças.'),
+      () => setStorageError(isAndroidApp ? 'Não foi possível salvar no dispositivo. Baixe uma cópia para guardar as mudanças.'
+        : 'Não foi possível salvar no navegador. Baixe uma cópia para guardar as mudanças.'),
     )
   }
 
@@ -80,7 +124,6 @@ export default function App() {
 
   function changeTheme(next) {
     document.documentElement.dataset.theme = next
-    document.querySelector('meta[name="theme-color"]').content = next === 'light' ? '#f6f0e6' : '#181715'
     setTheme(next)
     try {
       localStorage.setItem('linha-clara:theme', next)
@@ -245,7 +288,7 @@ export default function App() {
           act={(action) => act(action, doc)} storageError={storageError} />
       </Suspense> : <main className="loading-view">{ready ? <><h1>Documento indisponível</h1><button className="button primary" onClick={() => library('home', null, true)}>Voltar à biblioteca</button></> : 'Abrindo documento…'}</main>)
       : ['studio', 'drawings'].includes(route.section) ? <Suspense fallback={<main className="loading-view">Abrindo desenhos…</main>}>
-        <SketchStudio view={route.section} leave={() => library()} showGallery={() => library('drawings')} showEditor={() => library('studio')} />
+        <SketchStudio view={route.section} navigate={library} leave={() => library()} showGallery={() => library('drawings')} showEditor={() => library('studio')} />
       </Suspense> : <Library items={items} section={route.section} folderId={validFolder} select={library} open={open} create={requestCreate} act={act}
           busy={!ready} storageError={storageError} backup={exportLibrary} help={() => setDialog({ type: 'help' })}
           theme={theme} changeTheme={changeTheme} motionSettings={() => setDialog({ type: 'motion' })} />}
@@ -324,7 +367,9 @@ export default function App() {
       </footer>
     </Dialog>}
     {dialog?.type === 'help' && <Dialog title="Seu espaço local" close={close}>
-      <div className="dialog-help"><CloudOff size={24} /><p>Seus documentos são salvos neste navegador. Baixe uma cópia antes de limpar os dados do site ou para levar seus documentos para outro navegador.</p></div>
+      <div className="dialog-help"><CloudOff size={24} /><p>{isAndroidApp
+        ? 'Seus documentos ficam neste dispositivo. Baixe uma cópia antes de limpar os dados do app ou para levar os arquivos a outro dispositivo.'
+        : 'Seus documentos são salvos neste navegador. Baixe uma cópia antes de limpar os dados do site ou para levar seus documentos para outro navegador.'}</p></div>
       <footer className="dialog-actions"><button className="button secondary" onClick={close}>Fechar</button><button className="button primary" onClick={exportLibrary}>Baixar cópia</button></footer>
     </Dialog>}
     {dialog?.type === 'motion' && <Dialog title="Animações" close={close}>

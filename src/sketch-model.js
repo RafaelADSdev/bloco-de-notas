@@ -3,6 +3,7 @@ export const canvasSizes = [
   ['1200×800', 'Paisagem'], ['1200×1200', 'Quadrado'], ['900×1350', 'Retrato'],
   ['1920×1080', 'Tela ampla'],
 ]
+export const canvasLimits = { min: 128, max: 4096, pixels: 12_000_000 }
 
 export const brushes = {
   pencil: { label: 'Lápis', size: 5, opacity: 85 },
@@ -12,6 +13,9 @@ export const brushes = {
   chalk: { label: 'Pastel seco', size: 30, opacity: 78 },
   wash: { label: 'Aquarela', size: 52, opacity: 70 },
   spray: { label: 'Aerógrafo', size: 65, opacity: 80 },
+  stamp: { label: 'Carimbo', size: 26, opacity: 88 },
+  splatter: { label: 'Respingos', size: 44, opacity: 85 },
+  smudge: { label: 'Esfuminho', size: 34, opacity: 85 },
   erase: { label: 'Borracha', size: 32, opacity: 100 },
 }
 
@@ -23,6 +27,28 @@ export const blends = {
   'soft-light': 'Luz suave',
   darken: 'Escurecer',
   lighten: 'Clarear',
+  'color-dodge': 'Subexpor cor',
+  'color-burn': 'Superexpor cor',
+  'hard-light': 'Luz forte',
+  difference: 'Diferença',
+  exclusion: 'Exclusão',
+  hue: 'Matiz',
+  saturation: 'Saturação',
+  color: 'Cor',
+  luminosity: 'Luminosidade',
+  lighter: 'Adicionar',
+}
+
+export const layerLabels = {
+  none: 'Sem etiqueta', gray: 'Cinza', red: 'Vermelho', orange: 'Laranja', yellow: 'Amarelo',
+  green: 'Verde', blue: 'Azul', violet: 'Violeta',
+}
+export const layerAdjustments = { hue: 0, saturation: 0, lightness: 0, red: 0, green: 0, blue: 0 }
+
+export function canMergeDown(layers, index) {
+  if (index <= 0 || index >= layers.length || layers[index + 1]?.clipToBelow) return false
+  return [layers[index - 1], layers[index]].every((layer) => layer.visible && !layer.locked
+    && !layer.clipToBelow && layer.blend === 'source-over')
 }
 
 export const palettes = [
@@ -121,17 +147,45 @@ export function transformPoints(points, { x = 0, y = 0, angle = 0, scaleX = 1, s
   })
 }
 
-export function symmetryMatrices(mode, frame) {
-  const x = frame.x + frame.width / 2, y = frame.y + frame.height / 2
+export function symmetryMatrices(mode, frame, settings = {}) {
+  const x = frame.x + frame.width * (settings.symmetryX ?? 50) / 100
+  const y = frame.y + frame.height * (settings.symmetryY ?? 50) / 100
   const matrices = [[1, 0, 0, 1, 0, 0]]
   if (mode === 'vertical' || mode === 'both') matrices.push([-1, 0, 0, 1, x * 2, 0])
   if (mode === 'horizontal' || mode === 'both') matrices.push([1, 0, 0, -1, 0, y * 2])
   if (mode === 'both') matrices.push([-1, 0, 0, -1, x * 2, y * 2])
+  if (mode === 'free') {
+    const angle = (settings.symmetryAngle ?? 0) * Math.PI / 180
+    const cos = Math.cos(2 * angle), sin = Math.sin(2 * angle)
+    matrices.push([cos, sin, sin, -cos, x - x * cos - y * sin, y - x * sin + y * cos])
+  }
   if (mode === 'radial') {
-    for (let i = 1; i < 6; i++) {
-      const cos = Math.cos(i * Math.PI / 3), sin = Math.sin(i * Math.PI / 3)
+    const count = settings.symmetryCount ?? 6
+    for (let i = 1; i < count; i++) {
+      const cos = Math.cos(i * Math.PI * 2 / count), sin = Math.sin(i * Math.PI * 2 / count)
       matrices.push([cos, sin, -sin, cos, x - x * cos + y * sin, y - x * sin - y * cos])
     }
   }
   return matrices.length === 1 ? undefined : matrices
+}
+
+export function stabilizePoint(point, last, radius, smoothing) {
+  const distance = Math.hypot(point.x - last.x, point.y - last.y)
+  if (distance <= radius) return last
+  const ratio = (1 - radius / distance) * (1 - smoothing / 120)
+  return { x: last.x + (point.x - last.x) * ratio, y: last.y + (point.y - last.y) * ratio, pressure: point.pressure }
+}
+
+export function predictStroke(points, strength) {
+  if (!strength || points.length < 4) return points
+  const first = points[0], last = points.at(-1)
+  const dx = last.x - first.x, dy = last.y - first.y
+  const length = Math.hypot(dx, dy)
+  if (length < 18) return points
+  const tolerance = Math.max(1.5, Math.min(22, length * .012 * strength))
+  const projections = points.map((point) => ((point.x - first.x) * dx + (point.y - first.y) * dy) / (length * length))
+  if (points.some((point, i) => projections[i] < -.03 || projections[i] > 1.03
+    || (i && projections[i] < projections[i - 1] - .045)
+    || Math.abs((point.x - first.x) * dy - (point.y - first.y) * dx) > tolerance * length)) return points
+  return points.map(({ pressure }, i) => ({ x: first.x + dx * projections[i], y: first.y + dy * projections[i], pressure }))
 }

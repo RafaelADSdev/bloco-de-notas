@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { BookOpen, Check, FileText, Folder, Layout, SquarePen, X } from 'lucide-react'
 import { colors, labels, papers } from './model'
 
@@ -83,9 +83,10 @@ export function MenuOption({ icon: Icon, children, danger = false, onClick, disa
   </button>
 }
 
-export function Dialog({ title, close, children, busy = false }) {
+export function Dialog({ title, close, children, busy = false, className = '', headerAction }) {
   const ref = useRef(null)
-  const titleId = 'dialog-title'
+  const backdropPress = useRef(false)
+  const titleId = useId()
   useEffect(() => {
     const node = ref.current
     const previous = document.activeElement
@@ -96,13 +97,24 @@ export function Dialog({ title, close, children, busy = false }) {
       if (previous?.isConnected) previous.focus({ preventScroll: true })
     }
   }, [])
-  return <dialog ref={ref} className="dialog" aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); if (!busy) close() }} onClick={(event) => {
-    if (!busy && event.target === ref.current) {
-      const bounds = ref.current.getBoundingClientRect()
-      if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close()
-    }
-  }}>
-    <header><h2 id={titleId}>{title}</h2><IconButton label="Fechar" onClick={close} disabled={busy}><X size={20} /></IconButton></header>
+  function onBackdrop(event) {
+    if (event.target !== ref.current) return false
+    const { left, right, top, bottom } = ref.current.getBoundingClientRect()
+    return event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom
+  }
+
+  return <dialog ref={ref} className={'dialog ' + className} aria-labelledby={titleId}
+    onCancel={(event) => { event.preventDefault(); if (!busy) close() }}
+    onPointerDown={(event) => { backdropPress.current = onBackdrop(event) }}
+    onPointerCancel={() => { backdropPress.current = false }}
+    onClick={(event) => {
+      if (!busy && backdropPress.current && onBackdrop(event)) close()
+      backdropPress.current = false
+    }}>
+    <header><h2 id={titleId}>{title}</h2>
+      {headerAction && <div className="dialog-header-action">{headerAction}</div>}
+      <IconButton label="Fechar" onClick={close} disabled={busy}><X size={20} /></IconButton>
+    </header>
     {children}
   </dialog>
 }

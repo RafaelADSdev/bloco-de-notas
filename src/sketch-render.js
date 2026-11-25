@@ -1,5 +1,6 @@
 import { bitmap, flood, polygon, transformRegion } from './sketch-raster'
 import { drawingFrame } from './sketch-model'
+import { adjustLayerImage, hasLayerColor, layerColorArea } from './sketch-layer-color'
 
 const legacyBrushes = { Lápis: 'pencil', Caneta: 'ink', Pincel: 'brush', Marcador: 'marker', Borracha: 'erase', Linha: 'line', Retângulo: 'rectangle', Elipse: 'ellipse' }
 
@@ -59,10 +60,80 @@ function softStroke(ctx, s, tool) {
   })
 }
 
+function stampStroke(ctx, { points, size, spacing, stampShape }, tool) {
+  const step = Math.max(1, size * (spacing ?? (tool === 'stamp' ? 72 : 42)) / 100)
+  spaced(points, step, (point, index) => {
+    const { x, y } = point
+    const r = Math.max(.5, radius(point, size))
+    ctx.beginPath()
+    if (tool === 'splatter') {
+      for (let dot = 0; dot < 18; dot++) {
+        const seed = index * 54 + dot * 3
+        const angle = noise(seed) * Math.PI * 2
+        const spread = Math.pow(noise(seed + 1), 1.2) * r
+        const fleck = Math.max(.4, r * (.018 + .135 * noise(seed + 2) ** 2))
+        const cx = x + Math.cos(angle) * spread, cy = y + Math.sin(angle) * spread
+        ctx.moveTo(cx + fleck, cy)
+        ctx.arc(cx, cy, fleck, 0, Math.PI * 2)
+      }
+    } else if (stampShape === 'circle') {
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+    } else if (stampShape === 'square') {
+      ctx.rect(x - r, y - r, r * 2, r * 2)
+    } else {
+      ctx.moveTo(x, y - r)
+      ctx.lineTo(x + r, y)
+      ctx.lineTo(x, y + r)
+      ctx.lineTo(x - r, y)
+      ctx.closePath()
+    }
+    ctx.fill()
+  })
+}
+
+function smudgeStroke(ctx, { points, size }) {
+  if (points.length < 2) return
+  const { a, b, c, d, e, f } = ctx.getTransform()
+  const opacity = ctx.globalAlpha
+  const pigment = [0, 0, 0, 0]
+  spaced(points, Math.max(4, size * .22), (point, index) => {
+    const { x, y } = point
+    const sx = Math.floor(a * x + c * y + e), sy = Math.floor(b * x + d * y + f)
+    const sample = ctx.getImageData(sx, sy, 1, 1).data
+    const carriedAlpha = pigment[3]
+    if (index && carriedAlpha > .006) {
+      const rgb = pigment.slice(0, 3).map((v) => Math.round(v / carriedAlpha)).join(' ')
+      const r = Math.max(.5, radius(point, size))
+      const dab = ctx.createRadialGradient(x, y, 0, x, y, r)
+      dab.addColorStop(0, `rgb(${rgb})`)
+      dab.addColorStop(1, `rgb(${rgb} / 0)`)
+      ctx.fillStyle = dab
+      ctx.globalAlpha = opacity * carriedAlpha * .64
+      ctx.fillRect(x - r, y - r, r * 2, r * 2)
+    }
+
+    // Store premultiplied color so pickup from empty pixels only thins the pigment.
+    const pickup = index ? .24 : 1
+    const alpha = sample[3] / 255
+    for (let channel = 0; channel < 3; channel++) {
+      pigment[channel] += (sample[channel] * alpha - pigment[channel]) * pickup
+    }
+    pigment[3] += (alpha - pigment[3]) * pickup
+  })
+}
+
 function trace(ctx, s, tool) {
   const { points, size } = s
   if (tool === 'chalk' || tool === 'wash' || tool === 'spray') {
     softStroke(ctx, s, tool)
+    return
+  }
+  if (tool === 'stamp' || tool === 'splatter') {
+    stampStroke(ctx, s, tool)
+    return
+  }
+  if (tool === 'smudge') {
+    smudgeStroke(ctx, s)
     return
   }
   if (tool === 'rectangle' || tool === 'ellipse') {
@@ -97,6 +168,7 @@ function trace(ctx, s, tool) {
 function stroke(ctx, s) {
   if (!s.points.length) return
   const tool = s.kind ?? legacyBrushes[s.tool]
+  if (s.lockAlpha && tool === 'erase') return
   const opacity = s.opacity ?? (tool === 'marker' ? .3 : tool === 'pencil' ? .65 : 1)
   for (const matrix of s.matrices ?? [null]) {
     ctx.save()
@@ -105,7 +177,7 @@ function stroke(ctx, s) {
       ctx.clip()
     }
     if (matrix) ctx.transform(...matrix)
-    ctx.globalCompositeOperation = tool === 'erase' ? 'destination-out' : 'source-over'
+    ctx.globalCompositeOperation = tool === 'erase' ? 'destination-out' : s.lockAlpha ? 'source-atop' : 'source-over'
     ctx.globalAlpha = opacity
     ctx.strokeStyle = ctx.fillStyle = s.color
     ctx.lineWidth = s.size
@@ -116,10 +188,46 @@ function stroke(ctx, s) {
   }
 }
 
+function area(ctx, operation) {
+  const { points, kind, color, opacity = 1, clip, size = 1, lockAlpha } = operation
+  const gradient = kind === 'gradient'
+  if (gradient ? points.length < 2 : points.length < 3) return
+
+  const [start, end] = [points[0], points.at(-1)]
+  if (gradient && Math.hypot(end.x - start.x, end.y - start.y) < .01) return
+  ctx.save()
+  if (clip?.length) {
+    polygon(ctx, clip)
+    ctx.clip()
+  }
+  ctx.globalCompositeOperation = lockAlpha ? 'source-atop' : 'source-over'
+  ctx.globalAlpha = opacity
+  if (gradient) {
+    const paint = ctx.createLinearGradient(start.x, start.y, end.x, end.y)
+    paint.addColorStop(0, color)
+    paint.addColorStop(1, operation.endColor)
+    ctx.fillStyle = paint
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  } else {
+    polygon(ctx, points)
+    if (kind === 'area-outline') {
+      ctx.strokeStyle = color
+      ctx.lineWidth = size
+      ctx.lineJoin = 'round'
+      ctx.stroke()
+    } else {
+      ctx.fillStyle = color
+      ctx.fill('evenodd')
+    }
+  }
+  ctx.restore()
+}
+
 export function studioRenderer(width, height, imageReady) {
   const cache = new Map()
   const images = new WeakMap()
   const scratch = bitmap(width, height).getContext('2d', { willReadFrequently: true })
+  let clipping
   let revision = 0
 
   function prepare(layers) {
@@ -140,6 +248,8 @@ export function studioRenderer(width, height, imageReady) {
   function apply(ctx, operation, captured) {
     if (operation.kind === 'fill') {
       flood(ctx, operation)
+    } else if (operation.kind === 'area-fill' || operation.kind === 'area-outline' || operation.kind === 'gradient') {
+      area(ctx, operation)
     } else if (operation.kind === 'region') {
       transformRegion(ctx, operation, captured)
     } else if (operation.kind === 'image') {
@@ -157,21 +267,54 @@ export function studioRenderer(width, height, imageReady) {
     }
   }
 
-  function renderLayer(layer) {
+  function renderEntry(layer) {
     let entry = cache.get(layer.id)
     if (!entry) {
       entry = { ctx: bitmap(width, height).getContext('2d', { willReadFrequently: true }), strokes: [] }
       cache.set(layer.id, entry)
     }
     const { strokes } = layer
-    if (entry.strokes === strokes && entry.revision === revision) return entry.ctx.canvas
+    if (entry.strokes === strokes && entry.revision === revision) return entry
     const incremental = entry.revision === revision && entry.strokes.length <= strokes.length
       && entry.strokes.every((operation, index) => operation === strokes[index])
     if (!incremental) entry.ctx.clearRect(0, 0, width, height)
     for (let i = incremental ? entry.strokes.length : 0; i < strokes.length; i++) apply(entry.ctx, strokes[i])
     entry.strokes = strokes
     entry.revision = revision
-    return entry.ctx.canvas
+    return entry
+  }
+
+  function renderRawLayer(layer) {
+    return renderEntry(layer).ctx.canvas
+  }
+
+  function renderLayer(layer) {
+    const entry = renderEntry(layer)
+    const { adjustments } = layer
+    if (!hasLayerColor(adjustments)) {
+      if (entry.adjusted) {
+        entry.adjusted.ctx.canvas.width = 0
+        entry.adjusted = undefined
+      }
+      return entry.ctx.canvas
+    }
+    const cached = entry.adjusted ??= { ctx: bitmap(width, height).getContext('2d') }
+    if (cached.options !== adjustments || cached.strokes !== entry.strokes || cached.revision !== entry.revision) {
+      const extendsCache = cached.options === adjustments && cached.revision === entry.revision
+        && cached.strokes.length < entry.strokes.length && cached.strokes.every((stroke, index) => stroke === entry.strokes[index])
+      const changed = extendsCache
+        ? layerColorArea(entry.strokes.slice(cached.strokes.length), width, height)
+        : { x: 0, y: 0, width, height }
+      if (changed.width && changed.height) {
+        const { x, y } = changed
+        const pixels = entry.ctx.getImageData(x, y, changed.width, changed.height)
+        cached.ctx.putImageData(adjustLayerImage(pixels, adjustments), x, y)
+      }
+      cached.options = adjustments
+      cached.strokes = entry.strokes
+      cached.revision = entry.revision
+    }
+    return cached.ctx.canvas
   }
 
   function paint(ctx, drawing, draft) {
@@ -180,29 +323,94 @@ export function studioRenderer(width, height, imageReady) {
       ctx.fillStyle = drawing.background
       ctx.fillRect(0, 0, width, height)
     }
-    for (const layer of drawing.layers) {
-      if (!layer.visible) continue
-      let rendered = renderLayer(layer)
-      if (draft?.layer === layer.id) {
-        scratch.clearRect(0, 0, width, height)
-        scratch.drawImage(rendered, 0, 0)
-        apply(scratch, draft.operation, draft.captured)
-        rendered = scratch.canvas
+    const layers = drawing.layers
+    for (let index = 0; index < layers.length;) {
+      const layer = layers[index++]
+      if (layer.clipToBelow) continue
+      const firstClip = index
+      while (layers[index]?.clipToBelow) index++
+      const opacity = layer.opacity ?? 1
+      if (!layer.visible || opacity <= 0) continue
+
+      let rendered = drawLayer(layer, draft)
+      if (index > firstClip) {
+        const clipped = layers.slice(firstClip, index).filter((mask) => mask.visible && (mask.opacity ?? 1) > 0)
+        if (clipped.length) rendered = drawClipped(rendered, clipped, draft)
       }
-      ctx.globalAlpha = layer.opacity
-      ctx.globalCompositeOperation = layer.blend
+      ctx.globalAlpha = opacity
+      ctx.globalCompositeOperation = layer.blend || 'source-over'
       ctx.drawImage(rendered, 0, 0)
     }
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
   }
 
+  function drawLayer(layer, draft) {
+    if (draft?.layer !== layer.id) return renderLayer(layer)
+    const rendered = renderRawLayer(layer)
+    scratch.clearRect(0, 0, width, height)
+    scratch.drawImage(rendered, 0, 0)
+    apply(scratch, draft.operation, draft.captured)
+    if (hasLayerColor(layer.adjustments)) {
+      const changed = layerColorArea([draft.operation], width, height)
+      if (!changed.width || !changed.height) return renderLayer(layer)
+      const { x, y } = changed
+      const pixels = scratch.getImageData(x, y, changed.width, changed.height)
+      if (changed.width < width || changed.height < height) {
+        scratch.clearRect(0, 0, width, height)
+        scratch.drawImage(renderLayer(layer), 0, 0)
+      }
+      scratch.putImageData(adjustLayerImage(pixels, layer.adjustments), x, y)
+    }
+    return scratch.canvas
+  }
+
+  function drawClipped(base, layers, draft) {
+    clipping ??= bitmap(width, height).getContext('2d', { willReadFrequently: true })
+    clipping.clearRect(0, 0, width, height)
+    clipping.drawImage(base, 0, 0)
+
+    const blend = layers.some((layer) => layer.blend && layer.blend !== 'source-over')
+    let alpha
+    if (blend) {
+      // Blend colors on an opaque surface, then restore the base alpha exactly.
+      const image = clipping.getImageData(0, 0, width, height)
+      alpha = new Uint8Array(width * height)
+      for (let index = 0; index < alpha.length; index++) {
+        const channel = index * 4 + 3
+        alpha[index] = image.data[channel]
+        image.data[channel] = 255
+      }
+      clipping.putImageData(image, 0, 0)
+    }
+
+    for (const layer of layers) {
+      clipping.globalAlpha = layer.opacity ?? 1
+      clipping.globalCompositeOperation = blend ? (layer.blend || 'source-over') : 'source-atop'
+      clipping.drawImage(drawLayer(layer, draft), 0, 0)
+    }
+    clipping.globalAlpha = 1
+    clipping.globalCompositeOperation = 'source-over'
+
+    if (alpha) {
+      const image = clipping.getImageData(0, 0, width, height)
+      for (let index = 0; index < alpha.length; index++) image.data[index * 4 + 3] = alpha[index]
+      clipping.putImageData(image, 0, 0)
+    }
+    return clipping.canvas
+  }
+
   return {
     prepare,
     renderLayer,
+    renderRawLayer,
     paint,
     prune(layers) {
-      for (const id of cache.keys()) if (!layers.some((layer) => layer.id === id)) cache.delete(id)
+      for (const [id, entry] of cache) {
+        if (layers.some((layer) => layer.id === id)) continue
+        releaseEntry(entry)
+        cache.delete(id)
+      }
     },
     async ready(layers) {
       prepare(layers)
@@ -212,7 +420,8 @@ export function studioRenderer(width, height, imageReady) {
     },
     release(layers) {
       scratch.canvas.width = 0
-      for (const { ctx } of cache.values()) ctx.canvas.width = 0
+      if (clipping) clipping.canvas.width = 0
+      for (const entry of cache.values()) releaseEntry(entry)
       cache.clear()
       for (const layer of layers) {
         for (const operation of layer.strokes) {
@@ -225,12 +434,17 @@ export function studioRenderer(width, height, imageReady) {
   }
 }
 
+function releaseEntry(entry) {
+  entry.ctx.canvas.width = 0
+  if (entry.adjusted) entry.adjusted.ctx.canvas.width = 0
+}
+
 export async function drawingThumbnail(drawing, width, height) {
-  const layers = drawing.layers.filter((layer) => layer.visible)
+  const layers = drawing.layers
   const renderer = studioRenderer(drawing.width, drawing.height, () => {})
   const surface = bitmap(drawing.width, drawing.height)
   try {
-    await renderer.ready(layers)
+    await renderer.ready(layers.filter((layer) => layer.visible))
     renderer.paint(surface.getContext('2d'), { ...drawing, layers })
     const frame = drawingFrame(drawing)
     const preview = bitmap(width, height)

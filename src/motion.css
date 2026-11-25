@@ -85,18 +85,13 @@
 .sidebar.sidebar-open, .page-sidebar {
   animation: var(--motion-off, reveal-left 235ms var(--motion-long-ease) backwards);
 }
-.sidebar-scrim, .studio-scrim, .dialog[open]::backdrop {
+.sidebar-scrim, .dialog[open]::backdrop {
   animation: var(--motion-off, backdrop-in 180ms var(--ease-out) backwards);
 }
 .popover { animation: var(--motion-off, popover-in 180ms var(--motion-long-ease) backwards); }
 .dialog[open] { animation: var(--motion-off, dialog-in 255ms var(--motion-long-ease) backwards); }
 .toast, .status-float { animation: var(--motion-off, reveal-right 240ms var(--motion-long-ease) backwards); }
 .studio-storage[data-status='confirmed'] { animation: var(--motion-off, workspace-in 220ms var(--motion-long-ease) backwards); }
-
-@media (max-width: 760px) {
-  .studio-brushes.mobile-open { animation: var(--motion-off, reveal-left 235ms var(--motion-long-ease) backwards); }
-  .studio-layers.mobile-open { animation: var(--motion-off, reveal-right 235ms var(--motion-long-ease) backwards); }
-}
 
 @keyframes paper-expose {
   from { opacity: .42; scale: 1.042; clip-path: inset(0 0 0 13%); }

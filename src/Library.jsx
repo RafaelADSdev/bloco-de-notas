@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownToLine, ArrowLeft, BookOpen, ChevronDown, ChevronRight, CircleHelp, CloudOff, Copy, FileText, Folder, FolderInput,
-  Grid2X2, Images, Layout, List, Menu as MenuIcon, Moon, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Sparkles, Star, Sun, Trash2, Upload, X,
+  Grid2X2, Images, Layout, List, Menu as MenuIcon, Moon, MoreHorizontal, Pencil, Plus, RotateCcw, Search, SlidersHorizontal, Sparkles, Star, Sun, Trash2, Upload, X,
 } from 'lucide-react'
 import { colors, dateLabel, isTrashed, labels, matches, searchable } from './model'
-import { Brand, IconButton, itemIcons, Menu, MenuOption } from './ui'
+import { Brand, Dialog, IconButton, itemIcons, Menu, MenuOption } from './ui'
+import { isAndroidApp } from './android-platform'
+import { MobileNavigation } from './MobileNavigation'
 
 const navigation = [
   { key: 'home', title: 'Biblioteca', icon: BookOpen },
@@ -12,6 +14,11 @@ const navigation = [
   { key: 'studio', title: 'Estúdio de desenho', icon: Pencil },
   { key: 'drawings', title: 'Meus desenhos', icon: Images },
   { key: 'trash', title: 'Lixeira', icon: Trash2 },
+]
+const bottomNavigation = navigation.filter(({ key }) => ['home', 'favorites', 'drawings'].includes(key))
+const createItems = [
+  ['notebook', 'Caderno', BookOpen], ['text', 'Nota de texto', FileText], ['whiteboard', 'Quadro branco', Layout],
+  ['folder', 'Pasta', Folder], ['import', 'Importar arquivo', Upload],
 ]
 
 function NewMenu({ create }) {
@@ -79,15 +86,17 @@ export function Library({ items, section, folderId, select, open, create, act, b
   const [sort, setSort] = useState('recent')
   const [list, setList] = useState(false)
   const [sidebar, setSidebar] = useState(false)
+  const [sheet, setSheet] = useState(null)
   const search = useRef(null)
   const drawerTrigger = useRef(null)
+  const tabDrawerTrigger = useRef(null)
   const drawerClose = useRef(null)
   const index = useMemo(() => new Map(items.map((item) => [item.id, item])), [items])
   const active = useMemo(() => items.filter((item) => !isTrashed(item, index)), [items, index])
   const folder = index.get(folderId)
   const folders = active.filter((item) => item.type === 'folder' && !item.parent).sort(sorters.name)
   const normalized = searchable(query.trim())
-  const title = folder?.title ?? navigation.find(({ key }) => key === section)?.title ?? 'Biblioteca'
+  const title = folder?.title ?? (section === 'settings' ? 'Ajustes' : navigation.find(({ key }) => key === section)?.title) ?? 'Biblioteca'
   const candidates = section === 'trash' ? items.filter((item) => item.deleted && !isTrashed(index.get(item.parent), index))
     : section === 'favorites' ? active.filter((item) => item.favorite)
     : normalized ? active : active.filter((item) => item.parent === folderId)
@@ -116,7 +125,7 @@ export function Library({ items, section, folderId, select, open, create, act, b
   useEffect(() => {
     if (!sidebar) return
     drawerClose.current?.focus()
-    const mobile = window.matchMedia('(max-width: 820px)')
+    const mobile = window.matchMedia('(max-width: 820px), (max-width: 1100px) and (max-height: 560px)')
     function closeOnDesktop(event) {
       if (!event.matches) setSidebar(false)
     }
@@ -126,13 +135,17 @@ export function Library({ items, section, folderId, select, open, create, act, b
 
   function closeSidebar() {
     setSidebar(false)
-    requestAnimationFrame(() => drawerTrigger.current?.focus())
+    requestAnimationFrame(() => {
+      const trigger = tabDrawerTrigger.current?.offsetWidth ? tabDrawerTrigger.current : drawerTrigger.current
+      trigger?.focus()
+    })
   }
 
   function go(key, id = null) {
     setQuery('')
     setTypeFilter('')
     setSidebar(false)
+    setSheet(null)
     select(key, id)
   }
 
@@ -147,9 +160,39 @@ export function Library({ items, section, folderId, select, open, create, act, b
     )}</div>
   }
 
+  const filters = <div className="collection-controls">
+    <label className="sort-control"><span className={isAndroidApp ? '' : 'sr-only'}>Tipo de arquivo</span><select aria-label="Filtrar por tipo" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+      <option value="">Todos os tipos</option><option value="notebook">Cadernos</option><option value="whiteboard">Quadros</option>
+      <option value="text">Notas de texto</option><option value="pdf">PDFs</option><option value="folder">Pastas</option>
+    </select><ChevronDown size={14} aria-hidden="true" /></label>
+    <label className="sort-control"><span className={isAndroidApp ? '' : 'sr-only'}>Ordenação</span><select aria-label="Ordenação" value={sort} onChange={(event) => setSort(event.target.value)}>
+      <option value="recent">Mais recentes</option><option value="name">Nome</option><option value="oldest">Mais antigos</option>
+    </select><ChevronDown size={14} aria-hidden="true" /></label>
+    <div className="view-switch" role="group" aria-label="Modo de exibição">
+      <IconButton label="Visualização em grade" aria-pressed={!list} onClick={() => setList(false)}><Grid2X2 size={16} /></IconButton>
+      <IconButton label="Visualização em lista" aria-pressed={list} onClick={() => setList(true)}><List size={17} /></IconButton>
+    </div>
+  </div>
+  const settings = <div className="android-settings">
+    <section aria-label="Preferências">
+      <label className="android-setting-row">{theme === 'light' ? <Sun size={22} /> : <Moon size={22} />}<span>Tema</span>
+        <select aria-label="Tema da interface" value={theme} onChange={(event) => changeTheme(event.target.value)}>
+          <option value="light">Claro</option><option value="dark">Escuro</option>
+        </select>
+      </label>
+      <button type="button" className="android-setting-row" onClick={motionSettings}><Sparkles size={22} /><span>Animações</span><ChevronRight size={18} /></button>
+    </section>
+    <section aria-label="Arquivos e armazenamento">
+      <button type="button" className="android-setting-row" onClick={() => create('import', null)}><Upload size={22} /><span>Importar arquivos</span><ChevronRight size={18} /></button>
+      <button type="button" className="android-setting-row" onClick={backup}><ArrowDownToLine size={22} /><span>Baixar cópia da biblioteca</span><ChevronRight size={18} /></button>
+      <button type="button" className="android-setting-row" onClick={help}><CloudOff size={22} /><span>Armazenamento local</span><ChevronRight size={18} /></button>
+      <button type="button" className="android-setting-row" onClick={() => go('trash')}><Trash2 size={22} /><span>Lixeira</span><ChevronRight size={18} /></button>
+    </section>
+  </div>
+
   return <div className="library-shell">
     {sidebar && <button className="sidebar-scrim" aria-label="Fechar navegação" tabIndex={-1} onClick={closeSidebar} />}
-    <aside id="library-navigation" className={'sidebar' + (sidebar ? ' sidebar-open' : '')} aria-label="Navegação">
+    {!isAndroidApp && <aside id="library-navigation" className={'sidebar' + (sidebar ? ' sidebar-open' : '')} aria-label="Navegação">
       <div className="sidebar-top"><button className="brand-button" onClick={() => go('home')}><Brand /></button><IconButton ref={drawerClose} label="Fechar navegação" className="mobile-only" onClick={closeSidebar}><X size={20} /></IconButton></div>
       <nav aria-label="Biblioteca">
         {navigation.map(({ key, title: label, icon: Icon }) => <button key={key} onClick={() => go(key)} aria-current={section === key && !folderId ? 'page' : undefined}>
@@ -166,9 +209,9 @@ export function Library({ items, section, folderId, select, open, create, act, b
         <span className="local-icon"><CloudOff size={17} strokeWidth={1.7} /></span>
         <span><strong>Espaço local</strong><small>Salvo neste navegador</small></span><ChevronRight size={15} className="local-chevron" />
       </button>
-    </aside>
+    </aside>}
     <div className="library-main" inert={sidebar}>
-      <header className="topbar">
+      {!isAndroidApp && <header className="topbar">
         <div className="topbar-leading">
           <IconButton ref={drawerTrigger} label="Abrir navegação" className="mobile-only" aria-controls="library-navigation" aria-expanded={sidebar} onClick={() => setSidebar(true)}><MenuIcon size={21} /></IconButton>
           <button className="topbar-space back-link" type="button" onClick={() => go('home')}><BookOpen size={16} /> Arquivos</button>
@@ -189,7 +232,7 @@ export function Library({ items, section, folderId, select, open, create, act, b
             <MenuOption icon={CircleHelp} onClick={help}>Sobre o armazenamento</MenuOption>
           </Menu>
         </div>
-      </header>
+      </header>}
       <main className="workspace" id="main-content">
         {storageError && <div className="notice error" role="alert">{storageError}</div>}
         <div className="heading-row" key={'heading:' + viewKey}>
@@ -198,27 +241,19 @@ export function Library({ items, section, folderId, select, open, create, act, b
             <h1>{normalized ? 'Resultados da busca' : title}</h1>
             {normalized && <p>Resultados para “{query.trim()}”</p>}
           </div>
-          {section === 'trash' ? visible.length > 0 && <button className="button secondary" onClick={() => act('emptyTrash')}><Trash2 size={17} />Esvaziar lixeira</button> : <NewMenu create={create} />}
+          {section === 'trash' && visible.length > 0 ? <button className="button secondary" onClick={() => act('emptyTrash')}><Trash2 size={17} />Esvaziar lixeira</button>
+            : !isAndroidApp && section !== 'trash' && <NewMenu create={create} />}
+          {isAndroidApp && section === 'home' && !folder && <span className="android-app-mark" aria-hidden="true"><Brand /></span>}
         </div>
+        {section === 'settings' && isAndroidApp ? settings : <>
         <div className="library-controls">
           <div className="search-box">
             <Search size={17} aria-hidden="true" />
             <input ref={search} type="search" aria-label="Buscar na biblioteca" placeholder="Buscar na biblioteca" value={query} onChange={(event) => setQuery(event.target.value)} />
             {query ? <IconButton label="Limpar busca" onClick={() => { setQuery(''); search.current.focus() }}><X size={15} /></IconButton> : <kbd aria-hidden="true">Ctrl K</kbd>}
           </div>
-            <div className="collection-controls">
-              <label className="sort-control"><span className="sr-only">Tipo de arquivo</span><select aria-label="Filtrar por tipo" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-                <option value="">Todos os tipos</option><option value="notebook">Cadernos</option><option value="whiteboard">Quadros</option>
-                <option value="text">Notas de texto</option><option value="pdf">PDFs</option><option value="folder">Pastas</option>
-              </select><ChevronDown size={14} aria-hidden="true" /></label>
-              <label className="sort-control"><span className="sr-only">Ordenação</span><select aria-label="Ordenação" value={sort} onChange={(event) => setSort(event.target.value)}>
-                <option value="recent">Mais recentes</option><option value="name">Nome</option><option value="oldest">Mais antigos</option>
-              </select><ChevronDown size={14} /></label>
-              <div className="view-switch" role="group" aria-label="Modo de exibição">
-                <IconButton label="Visualização em grade" aria-pressed={!list} onClick={() => setList(false)}><Grid2X2 size={16} /></IconButton>
-                <IconButton label="Visualização em lista" aria-pressed={list} onClick={() => setList(true)}><List size={17} /></IconButton>
-              </div>
-            </div>
+          {isAndroidApp ? <IconButton label="Filtros e visualização" className="android-filter" aria-haspopup="dialog"
+            data-active={!!typeFilter || sort !== 'recent' || list} onClick={() => setSheet('filters')}><SlidersHorizontal size={20} /></IconButton> : filters}
         </div>
         <section className="collection" key={'items:' + viewKey} aria-labelledby="collection-title">
           <div className="section-heading">
@@ -234,7 +269,30 @@ export function Library({ items, section, folderId, select, open, create, act, b
           <div className="section-heading"><h2 id="folders-title">Pastas <span>{visibleFolders.length}</span></h2><button className="button link-button" onClick={() => create('folder')}><Plus size={16} />Nova pasta</button></div>
           {visibleFolders.length > 0 ? collection(visibleFolders, 'folder-grid') : <p className="folder-empty">Crie uma pasta para organizar seus documentos.</p>}
         </section>}
+        </>}
       </main>
+      {isAndroidApp ? <>
+        <MobileNavigation active={section === 'trash' ? 'settings' : section} go={go} />
+        {['home', 'favorites'].includes(section) && <button type="button" className="android-fab" onClick={() => setSheet('create')} aria-haspopup="dialog"><Plus size={24} /> Novo</button>}
+      </> : <nav className="library-tabs" aria-label="Atalhos do espaço">
+        {bottomNavigation.map(({ key, title: label, icon: Icon }) => <button key={key} type="button"
+          onClick={() => go(key)} aria-current={section === key ? 'page' : undefined}>
+          <Icon size={20} strokeWidth={1.75} />{key === 'drawings' ? 'Desenhos' : label}
+        </button>)}
+        <button ref={tabDrawerTrigger} type="button" aria-controls="library-navigation" aria-expanded={sidebar} onClick={() => setSidebar(true)}>
+          <MenuIcon size={20} strokeWidth={1.75} />Menu
+        </button>
+      </nav>}
     </div>
+    {sheet === 'create' && <Dialog title="Criar" close={() => setSheet(null)}>
+      <div className="android-create-list">{createItems.map(([key, label, Icon]) => <button type="button" key={key} onClick={() => {
+        setSheet(null)
+        create(key)
+      }}><span><Icon size={22} /></span>{label}<ChevronRight size={18} /></button>)}</div>
+    </Dialog>}
+    {sheet === 'filters' && <Dialog title="Filtros e visualização" close={() => setSheet(null)}>
+      {filters}
+      <div className="dialog-actions"><button type="button" className="button primary" onClick={() => setSheet(null)}>Concluir</button></div>
+    </Dialog>}
   </div>
 }

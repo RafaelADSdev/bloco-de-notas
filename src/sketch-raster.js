@@ -12,7 +12,8 @@ function rgba(hex) {
   return [n >> 16, (n >> 8) & 255, n & 255]
 }
 
-export function flood(ctx, { point, color, opacity, tolerance, clip }) {
+export function flood(ctx, { point, color, opacity, tolerance, clip, lockAlpha }) {
+  if (!opacity) return
   const { width, height } = ctx.canvas
   let mask
   if (clip) {
@@ -25,6 +26,7 @@ export function flood(ctx, { point, color, opacity, tolerance, clip }) {
   const pixels = frame.data
   const first = clamp(Math.floor(point.y), 0, height - 1) * width + clamp(Math.floor(point.x), 0, width - 1)
   const [r, g, b, a] = pixels.subarray(first * 4, first * 4 + 4)
+  if (lockAlpha && !a) return
   const [red, green, blue] = rgba(color)
   if (a === 255 && r === red && g === green && b === blue) return
   const threshold = tolerance * 2.55
@@ -36,6 +38,7 @@ export function flood(ctx, { point, color, opacity, tolerance, clip }) {
     if (visited[position] || (mask && !mask[position * 4 + 3])) return
     visited[position] = 1
     const i = position * 4, alpha = pixels[i + 3]
+    if (lockAlpha && !alpha) return
     const delta = Math.max(Math.abs(pixels[i] - r), Math.abs(pixels[i + 1] - g), Math.abs(pixels[i + 2] - b))
     if (Math.abs(alpha - a) > threshold || delta * Math.min(alpha, a) / 255 > threshold) return
     queue[tail++] = position
@@ -44,12 +47,13 @@ export function flood(ctx, { point, color, opacity, tolerance, clip }) {
   enqueue(first)
   while (head < tail) {
     const position = queue[head++], x = position % width, i = position * 4
-    const keep = (1 - opacity) * pixels[i + 3] / 255
+    const oldAlpha = pixels[i + 3] / 255
+    const keep = lockAlpha ? 1 - opacity : (1 - opacity) * oldAlpha
     const alpha = opacity + keep
     pixels[i] = (red * opacity + pixels[i] * keep) / alpha
     pixels[i + 1] = (green * opacity + pixels[i + 1] * keep) / alpha
     pixels[i + 2] = (blue * opacity + pixels[i + 2] * keep) / alpha
-    pixels[i + 3] = alpha * 255
+    if (!lockAlpha) pixels[i + 3] = alpha * 255
     if (x > 0) enqueue(position - 1)
     if (x < width - 1) enqueue(position + 1)
     if (position >= width) enqueue(position - width)

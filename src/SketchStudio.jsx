@@ -4,16 +4,21 @@ import { readStudio, writeStudio } from './storage'
 import { DrawingNameForm } from './SketchDialogs'
 import { SketchEditor } from './SketchEditor'
 import { SketchGallery } from './SketchGallery'
+import { defaultDrawingFormat } from './SketchMobile'
 import { migrateStudio, newDrawing } from './sketch-model'
 import './sketch.css'
+import './sketch-mobile.css'
 
-export default function SketchStudio({ view, leave, showGallery, showEditor }) {
+export default function SketchStudio({ view, leave, showGallery, showEditor, navigate }) {
   const current = useRef(null)
   const clipboard = useRef(null)
+  const fileInput = useRef(null)
   const canStore = useRef(true)
   const [studio, setStudio] = useState(null)
   const [storage, setStorage] = useState('loading')
   const [dialog, setDialog] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
   const inGallery = view === 'drawings'
   const [editorOpened, setEditorOpened] = useState(!inGallery)
 
@@ -56,7 +61,8 @@ export default function SketchStudio({ view, leave, showGallery, showEditor }) {
 
   useEffect(() => {
     if (inGallery || !studio || studio.drawings.length) return
-    const drawing = newDrawing()
+    const [width, height] = defaultDrawingFormat().split('×').map(Number)
+    const drawing = newDrawing(undefined, width, height)
     save({ drawings: [drawing], active: drawing.id })
   }, [inGallery, studio, save])
 
@@ -79,6 +85,26 @@ export default function SketchStudio({ view, leave, showGallery, showEditor }) {
     if (inGallery) showEditor()
   }
 
+  async function importProject(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || importing) return
+    setImporting(true)
+    setImportError('')
+    try {
+      const drawing = file.name.toLowerCase().endsWith('.psd') || file.type === 'image/vnd.adobe.photoshop'
+        ? await (await import('./sketch-psd')).decodeDrawingPsd(file)
+        : await (await import('./sketch-files')).decodeDrawingProject(file)
+      save({ drawings: [...current.current.drawings, drawing], active: drawing.id })
+      setDialog(null)
+      if (inGallery) showEditor()
+    } catch (error) {
+      setImportError(error.message || 'Não foi possível abrir o projeto editável.')
+    } finally {
+      setImporting(false)
+    }
+  }
+
   function remove(target) {
     const prev = current.current
     const drawings = prev.drawings.filter((entry) => entry.id !== target.id)
@@ -91,17 +117,21 @@ export default function SketchStudio({ view, leave, showGallery, showEditor }) {
   if (!studio || (!inGallery && !drawing)) return <main className="loading-view">Abrindo desenhos…</main>
   function startDrawing() { setDialog({ type: 'new' }) }
   function closeDialog() { setDialog(null) }
+  function chooseProject() { fileInput.current?.click() }
 
   return <>
-    {inGallery && <SketchGallery drawings={studio.drawings} active={studio.active} open={open} create={startDrawing}
-      remove={(target) => setDialog({ type: 'remove', target })} leave={leave} storage={storage} />}
+    <input ref={fileInput} type="file" hidden accept=".json,.psd,application/json,image/vnd.adobe.photoshop" onChange={importProject} />
+    {importError && <Dialog title="Projeto indisponível" close={() => setImportError('')}><p>{importError}</p></Dialog>}
+    {inGallery && <SketchGallery drawings={studio.drawings} active={studio.active} open={open} create={startDrawing} navigate={navigate}
+      importDrawing={chooseProject} importing={importing} remove={(target) => setDialog({ type: 'remove', target })} leave={leave} storage={storage} />}
     {drawing && (editorOpened || !inGallery) && <div className="studio-app" hidden={inGallery}>
       <SketchEditor key={drawing.id} initial={drawing} leave={leave} save={saveDrawing} storage={storage} clipboard={clipboard}
-        newDrawing={startDrawing} gallery={showGallery} externalDialog={inGallery || Boolean(dialog)} />
+        newDrawing={startDrawing} gallery={showGallery} importDrawing={importing ? undefined : chooseProject}
+        externalDialog={inGallery || Boolean(dialog || importError)} />
     </div>}
     {dialog?.type === 'new' && <DrawingNameForm title="Novo desenho" create submit={create} close={closeDialog} />}
     {dialog?.type === 'remove' && <Dialog title="Excluir desenho?" close={closeDialog}>
-      <p>Excluir “{dialog.target.name}” da galeria deste navegador?</p>
+      <p>Excluir “{dialog.target.name}” da galeria local?</p>
       <div className="dialog-actions">
         <button className="button secondary" data-autofocus onClick={closeDialog}>Cancelar</button>
         <button className="button destructive" onClick={() => remove(dialog.target)}>Excluir desenho</button>

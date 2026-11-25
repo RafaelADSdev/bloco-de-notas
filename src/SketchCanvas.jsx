@@ -1,20 +1,11 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { CircleHelp, Minus, Plus, RotateCw, Scan } from 'lucide-react'
+import { CircleHelp, FlipHorizontal2, Minus, Plus, RotateCw, Scan } from 'lucide-react'
 import { IconButton } from './ui'
-import { bounds, brushes, clamp, drawingFrame, inside, rectangle, shapes, symmetryMatrices, transformPoints } from './sketch-model'
+import { bounds, brushes, clamp, drawingFrame, inside, predictStroke, rectangle, shapes, stabilizePoint, symmetryMatrices, transformPoints } from './sketch-model'
 import { captureRegion } from './sketch-raster'
+import { constrainedPoint, isDrawingGuide } from './sketch-guides'
 import { SketchGuides } from './SketchGuides'
 import { useSketchView } from './useSketchView'
-
-function constrained(point, first, guide, frame) {
-  if (guide === 'ruler') return { ...point, y: first.y }
-  if (guide !== 'perspective') return point
-  const dx = first.x - frame.x - frame.width / 2, dy = first.y - frame.y - frame.height / 2
-  const length = dx * dx + dy * dy
-  if (length < 1) return { ...point, y: first.y }
-  const ratio = ((point.x - first.x) * dx + (point.y - first.y) * dy) / length
-  return { ...point, x: first.x + ratio * dx, y: first.y + ratio * dy }
-}
 
 function pinch(touches, view) {
   const [a, b] = [...touches.values()]
@@ -25,10 +16,10 @@ function pinch(touches, view) {
   }
 }
 
-export function SketchCanvas({ drawing, active, tool, settings, renderer, imageVersion, selection, setSelection, addOperation, pickColor, insertText, space, showHelp, status }) {
+export function SketchCanvas({ drawing, active, tool, settings, renderer, imageVersion, selection, setSelection, addOperation, pickColor, insertText, space, showHelp, status, compact, recordFrame, positionTarget, positionGuide }) {
   const { width, height } = drawing
   const frame = drawingFrame(drawing)
-  const view = useSketchView(frame.width, frame.height)
+  const view = useSketchView(frame.width, frame.height, compact)
   const canvas = useRef(null)
   const gesture = useRef(null)
   const fingers = useRef(new Map())
@@ -37,12 +28,13 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
   const [overlay, setOverlay] = useState(null)
   const [panning, setPanning] = useState(false)
   const editable = active.visible && !active.locked
+  const guide = settings.guideSnap === false ? 'none' : settings.guide
 
   draw.current = () => {
     const current = gesture.current
     const draft = current?.operation ? current : null
     renderer.paint(canvas.current.getContext('2d', { willReadFrequently: true }), drawing, draft)
-    setOverlay(current?.outline ?? null)
+    setOverlay(current?.outline?.slice() ?? null)
   }
 
   function refresh() {
@@ -57,7 +49,8 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
     renderer.prepare(drawing.layers)
     renderer.prune(drawing.layers)
     draw.current()
-  }, [drawing, imageVersion, renderer])
+    recordFrame?.(canvas.current, frame)
+  }, [drawing, imageVersion, renderer, recordFrame])
 
   useLayoutEffect(() => () => cancelAnimationFrame(pending.current), [])
   useLayoutEffect(() => view.reset(), [drawing.frame])
@@ -103,15 +96,21 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
     if (gesture.current || fingers.current.size > 1) return
 
     const touch = event.pointerType === 'touch'
-    if (tool === 'hand' || space || event.button === 1 || (touch && settings.penOnly)) {
+    const point = absolutePoint(event)
+    const onPaper = point.x >= frame.x && point.x < frame.x + frame.width
+      && point.y >= frame.y && point.y < frame.y + frame.height
+    if (positionTarget && onPaper) {
+      event.preventDefault()
+      return positionGuide(point)
+    }
+    if (tool === 'hand' || space || event.button === 1 || (touch && (settings.penOnly || (compact && !onPaper)))) {
       event.preventDefault()
       capture(event, { type: 'pan', x: event.clientX, y: event.clientY, view: view.latest.current, touch })
       setPanning(true)
       return
     }
 
-    const point = absolutePoint(event)
-    if (point.x < frame.x || point.x >= frame.x + frame.width || point.y < frame.y || point.y >= frame.y + frame.height) return
+    if (!onPaper) return
     event.preventDefault()
     if (tool === 'sample') {
       draw.current()
@@ -120,16 +119,16 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
       return
     }
     if (tool === 'text') return insertText(point)
-    if (!editable) return
+    if (!editable || (tool === 'erase' && active.alphaLock)) return
     const clip = selection ?? (drawing.frame ? rectangle(frame, { x: frame.x + frame.width, y: frame.y + frame.height }) : null)
     if (tool === 'fill') {
-      addOperation(active.id, { kind: 'fill', point, color: settings.color, opacity: settings.opacity / 100, tolerance: settings.tolerance, clip })
+      addOperation(active.id, { kind: 'fill', point, color: settings.color, opacity: settings.opacity / 100, tolerance: settings.tolerance, clip, lockAlpha: !!active.alphaLock })
       return
     }
     if (tool === 'select' || tool === 'lasso') {
       if (selection && inside(selection, point)) {
         const operation = { kind: 'region', points: selection, transform: {} }
-        const captured = captureRegion(renderer.renderLayer(active), selection)
+        const captured = captureRegion(renderer.renderRawLayer(active), selection)
         capture(event, { type: 'transform', layer: active.id, point, operation, captured, outline: selection, touch })
       } else {
         capture(event, { type: tool, points: [point], outline: [], touch })
@@ -137,11 +136,17 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
       refresh()
       return
     }
+    const first = brushes[tool] && guide === 'ellipse' ? constrainedPoint(point, point, settings, frame) : point
     const operation = {
       kind: tool, color: settings.color, size: settings.size, opacity: settings.opacity / 100,
-      points: [{ ...point, pressure: brushes[tool] ? pressure(event) : undefined }],
-      matrices: symmetryMatrices(settings.symmetry, frame),
-      filled: tool !== 'line' && settings.filled, clip,
+      points: [{ ...first, pressure: brushes[tool] ? pressure(event) : undefined }],
+      matrices: tool === 'gradient' || tool === 'area-fill' ? undefined : symmetryMatrices(settings.symmetry, frame, settings),
+      filled: tool !== 'line' && settings.filled, clip, lockAlpha: !!active.alphaLock,
+    }
+    if (tool === 'gradient') operation.endColor = settings.endColor
+    if (tool === 'stamp' || tool === 'splatter') {
+      operation.spacing = settings.spacing
+      if (tool === 'stamp') operation.stampShape = settings.stampShape
     }
     capture(event, { type: 'stroke', layer: active.id, operation, touch })
     refresh()
@@ -176,24 +181,26 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
       current.outline = current.points
     } else {
       const { operation } = current
-      if (shapes.has(operation.kind) || settings.guide === 'ruler' || settings.guide === 'perspective') {
-        const first = operation.points[0]
-        const end = shapes.has(operation.kind) && operation.kind !== 'line' ? point : constrained(point, first, settings.guide, frame)
-        operation.points = [{ ...first, pressure: undefined }, end]
+      const first = operation.points[0]
+      if (operation.kind === 'area-fill') {
+        operation.points.push(point)
+        current.outline = operation.points
+      } else if (operation.kind === 'gradient' || shapes.has(operation.kind)
+        || (isDrawingGuide(guide) && guide !== 'ellipse')) {
+        const guided = operation.kind === 'line' || brushes[operation.kind]
+        const endpoint = guided && isDrawingGuide(guide) && guide !== 'ellipse' ? constrainedPoint(point, first, settings, frame) : point
+        operation.points = [{ ...first, pressure: undefined }, endpoint]
+      } else if (guide === 'ellipse') {
+        operation.points.push({ ...constrainedPoint(point, first, settings, frame), pressure: pressure(event) })
       } else if (final) {
         const last = operation.points.at(-1)
-        if (Math.hypot(point.x - last.x, point.y - last.y) > .25) operation.points.push({ ...point, pressure: last.pressure })
+        if (!settings.stabilizer && Math.hypot(point.x - last.x, point.y - last.y) > .25) operation.points.push({ ...point, pressure: last.pressure })
       } else {
         const events = event.nativeEvent?.getCoalescedEvents?.()
         for (const sample of events?.length ? events : [event]) {
-          const next = pointAt(sample)
           const last = operation.points.at(-1)
-          const ratio = 1 - settings.smoothing / 120
-          operation.points.push({
-            x: last.x + (next.x - last.x) * ratio,
-            y: last.y + (next.y - last.y) * ratio,
-            pressure: pressure(sample),
-          })
+          const next = stabilizePoint({ ...pointAt(sample), pressure: pressure(sample) }, last, settings.stabilizer, settings.smoothing)
+          if (next !== last) operation.points.push(next)
         }
       }
     }
@@ -211,9 +218,17 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
     refresh()
     if (cancelled) return
     if (current.type === 'stroke') {
-      if (shapes.has(current.operation.kind)) {
+      if (shapes.has(current.operation.kind) || current.operation.kind === 'gradient') {
         const [a, b] = current.operation.points
         if (!b || Math.hypot(a.x - b.x, a.y - b.y) < 1) return
+      }
+      if (current.operation.kind === 'area-fill') {
+        const { points } = current.operation
+        const box = bounds(points)
+        if (points.length < 3 || box.right - box.left < 2 || box.bottom - box.top < 2) return
+      }
+      if (brushes[current.operation.kind] && !isDrawingGuide(guide)) {
+        current.operation.points = predictStroke(current.operation.points, settings.prediction)
       }
       addOperation(current.layer, current.operation)
     } else if (current.type === 'transform') {
@@ -233,23 +248,27 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
     width: `${width / frame.width * 100}%`, height: `${height / frame.height * 100}%`,
     left: `${-frame.x / frame.width * 100}%`, top: `${-frame.y / frame.height * 100}%`,
   } : undefined
-  return <main className="studio-workspace">
+  return <main className={'studio-workspace' + (compact ? ' studio-workspace-compact' : '')}>
     <div ref={view.viewport} className="studio-viewport" style={{ cursor }}
       onPointerDown={start} onPointerMove={move} onPointerUp={end}
       onPointerCancel={(event) => end(event, true)}>
       <div className="studio-sheet" style={view.style}>
         <canvas ref={canvas} width={width} height={height} style={canvasStyle} aria-label="Área de desenho" />
-        <SketchGuides frame={frame} guide={settings.guide} symmetry={settings.symmetry} selection={overlay ?? selection} />
+        <SketchGuides frame={frame} guide={settings.guide} symmetry={settings.symmetry} settings={settings} selection={overlay ?? selection} />
       </div>
+      {compact && status && <div className="studio-touch-status" role="status">{status}</div>}
     </div>
     <div className="studio-viewbar">
-      <div className="studio-view-status"><span>{frame.width} × {frame.height} px</span>{status && <span role="status">{status}</span>}</div>
+      {!compact && <div className="studio-view-status"><span>{frame.width} × {frame.height} px</span>{status && <span role="status">{status}</span>}</div>}
       <div className="studio-zoom" role="group" aria-label="Visualização da tela">
+        <IconButton label="Espelhar visualização" aria-pressed={view.view.flipped} onClick={view.flip}><FlipHorizontal2 size={16} /></IconButton>
         <IconButton label="Girar visualização" onClick={view.rotate}><RotateCw size={15} /></IconButton>
         <IconButton label="Diminuir zoom" disabled={view.view.zoom <= .25} onClick={() => view.zoom(.8)}><Minus size={16} /></IconButton>
-        <output aria-label="Zoom">{Math.round(view.view.zoom * 100)}%</output>
+        {compact ? <IconButton className="studio-touch-fit" label="Enquadrar tela" onClick={view.reset}>
+          <Scan size={16} /><span>{Math.round(view.view.zoom * 100)}%</span>
+        </IconButton> : <output aria-label="Zoom">{Math.round(view.view.zoom * 100)}%</output>}
         <IconButton label="Aumentar zoom" disabled={view.view.zoom >= 8} onClick={() => view.zoom(1.25)}><Plus size={16} /></IconButton>
-        <IconButton label="Enquadrar tela" onClick={view.reset}><Scan size={16} /></IconButton>
+        {!compact && <IconButton label="Enquadrar tela" onClick={view.reset}><Scan size={16} /></IconButton>}
         <IconButton className="studio-help" label="Atalhos e gestos" onClick={showHelp}><CircleHelp size={17} /></IconButton>
       </div>
     </div>

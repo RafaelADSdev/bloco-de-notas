@@ -1,5 +1,10 @@
 {
   "appId": "com.rafaeladsdev.linhaclara",
   "appName": "Linha Clara",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "SystemBars": {
+      "initialViewportFitValueHint": "cover"
+    }
+  }
 }

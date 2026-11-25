@@ -1,22 +1,27 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, Download, Expand, ImagePlus, Images, Minimize2, Pencil, Plus, Save, Square } from 'lucide-react'
-import { IconButton, Menu, MenuOption } from './ui'
+import { ArrowLeft, ChevronDown, Download, Expand, FileUp, ImagePlus, Images, Minimize2, MoreHorizontal, Pencil, Plus, Save, Square, Video } from 'lucide-react'
+import { Dialog, IconButton, Menu, MenuOption } from './ui'
 import { SketchCanvas } from './SketchCanvas'
-import { DrawingHelp, DrawingNameForm, DrawingTextForm } from './SketchDialogs'
+import { DrawingHelp, DrawingNameForm, DrawingTextForm, LayerColorForm } from './SketchDialogs'
 import { BrushPanel, LayerPanel, SketchContext, SketchToolbar, tools } from './SketchPanels'
-import { bounds, brushes, clamp, drawingFrame, editHistory, newLayer, numberedLayer, paper, shapes, transformPoints, updateLayer } from './sketch-model'
+import { SketchBrushRail, SketchColorPicker, SketchMobileToolbar, SketchMobileTools, useCompactStudio } from './SketchMobile'
+import { bounds, brushes, canMergeDown, clamp, drawingFrame, editHistory, newLayer, numberedLayer, paper, shapes, transformPoints, updateLayer } from './sketch-model'
 import { bitmap, captureRegion, encode, imageLayer } from './sketch-raster'
 import { studioRenderer } from './sketch-render'
 import { fileName, saveFile } from './model'
+import { useSketchRecording } from './useSketchRecording'
+import { isAndroidApp } from './android-platform'
 
 const storageLabels = {
-  saved: 'Salvo neste navegador',
-  confirmed: 'Desenho salvo neste navegador',
+  saved: isAndroidApp ? 'Salvo no dispositivo' : 'Salvo neste navegador',
+  confirmed: isAndroidApp ? 'Desenho salvo no dispositivo' : 'Desenho salvo neste navegador',
   saving: 'Salvando…',
-  error: 'O navegador não salvou as alterações',
+  error: 'Não foi possível salvar as alterações',
 }
+const panelTitles = { brushes: 'Pincéis', color: 'Cor do traço', layers: 'Camadas', tools: 'Ferramentas e guias' }
 
-export function SketchEditor({ initial, leave, save, storage, newDrawing, gallery, clipboard, externalDialog }) {
+export function SketchEditor({ initial, leave, save, storage, newDrawing, gallery, clipboard, externalDialog, importDrawing }) {
+  const compact = useCompactStudio()
   const [history, edit] = useReducer(editHistory, { drawing: initial, past: [], future: [] })
   const { drawing } = history
   const [tool, setTool] = useState('pencil')
@@ -25,16 +30,23 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
   const [options, setOptions] = useState({
     color: '#243129', smoothing: 28, pressure: true, penOnly: false,
     symmetry: 'none', guide: 'none', filled: false, tolerance: 15,
+    endColor: '#ffffff', stabilizer: 0, prediction: 0,
+    guideX: 50, guideY: 50, guideAngle: 0, ellipseWidth: 65, ellipseHeight: 40,
+    guideSnap: true, guideOpacity: 65, guideDensity: 11,
+    symmetryX: 50, symmetryY: 50, symmetryAngle: 0, symmetryCount: 6,
   })
   const [recent, setRecent] = useState([])
   const [selection, setSelection] = useState(null)
   const [alpha, setAlpha] = useState(null)
+  const [layerColor, setLayerColor] = useState(null)
   const [space, setSpace] = useState(false)
   const [panel, setPanel] = useState(null)
   const [focused, setFocused] = useState(false)
   const [dialog, setDialog] = useState(null)
   const [message, setMessage] = useState(null)
+  const [positionTarget, setPositionTarget] = useState(null)
   const [busy, setBusy] = useState(false)
+  const recording = useSketchRecording()
   const [canPaste, setCanPaste] = useState(() => Boolean(clipboard.current))
   const [imageVersion, refreshImages] = useReducer((version) => version + 1, 0)
   const input = useRef(null)
@@ -53,11 +65,12 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
     edit({ type: 'commit', update })
   }
 
-  function chooseTool(key) {
+  function chooseTool(key, keepPanel = false) {
     if (brushes[key] && key !== 'erase') lastBrush.current = key
     setTool(key)
-    setPanel(null)
+    if (!keepPanel) setPanel(null)
     setMessage(null)
+    setPositionTarget(null)
   }
 
   function option(key, value) {
@@ -67,6 +80,16 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
 
   function changeBrush(key, value) {
     setBrushOptions((previous) => ({ ...previous, [brushKey]: { ...previous[brushKey], [key]: value } }))
+  }
+
+  function useBrushPreset({ tool: key, options: preset }) {
+    chooseTool(key, compact)
+    const { smoothing, stabilizer, prediction, pressure, ...brush } = preset
+    setBrushOptions((previous) => ({ ...previous, [key]: brush }))
+    setOptions((previous) => ({
+      ...previous, smoothing: smoothing ?? previous.smoothing, stabilizer: stabilizer ?? previous.stabilizer,
+      prediction: prediction ?? previous.prediction, pressure: pressure ?? previous.pressure,
+    }))
   }
 
   function undoRedo(type) {
@@ -106,6 +129,11 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
   }
 
   function layerAction(action, layerId) {
+    if (action === 'merge' || action === 'merge-visible') {
+      setPanel(null)
+      setDialog({ type: action, layer: layerId })
+      return
+    }
     setSelection(null)
     setAlpha(null)
     const copy = action === 'copy' ? newLayer('') : null
@@ -126,10 +154,50 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
     })
   }
 
+  async function mergeLayers(kind, layerId) {
+    const mergeVisible = kind === 'merge-visible'
+    const index = drawing.layers.findIndex((layer) => layer.id === layerId)
+    const group = mergeVisible ? drawing.layers.filter((layer) => layer.visible) : drawing.layers.slice(index - 1, index + 1)
+    if (group.length < 2 || (mergeVisible ? group.some((layer) => layer.locked) : !canMergeDown(drawing.layers, index))) return
+    const ids = new Set(group.map((layer) => layer.id))
+    const oldDrawing = drawing
+    const surface = bitmap(drawing.width, drawing.height)
+    setBusy(true)
+    setDialog(null)
+    try {
+      await renderer.ready(group)
+      renderer.paint(surface.getContext('2d'), { ...drawing, layers: mergeVisible ? drawing.layers : group, background: mergeVisible ? drawing.background : null })
+      const blob = await encode(surface)
+      if (!mounted.current) return
+      const merged = newLayer(mergeVisible ? 'Camadas visíveis mescladas' : group.map((layer) => layer.name).join(' + '))
+      merged.strokes = [{ kind: 'image', x: 0, y: 0, w: drawing.width, h: drawing.height, blob }]
+      commit((previous) => {
+        if (previous !== oldDrawing) return previous
+        const layers = mergeVisible
+          ? [merged, ...previous.layers.filter((layer) => !ids.has(layer.id))]
+          : [...previous.layers.slice(0, index - 1), merged, ...previous.layers.slice(index + 1)]
+        return { ...previous, layers, active: merged.id, background: mergeVisible ? null : previous.background }
+      })
+      setSelection(null)
+      setAlpha(null)
+    } catch {
+      if (mounted.current) setMessage('Não foi possível mesclar as camadas.')
+    } finally {
+      surface.width = 0
+      if (mounted.current) setBusy(false)
+    }
+  }
+
   function editRegion(transform) {
     if (!selection || !editable) return
     addOperation(active.id, { kind: 'region', points: selection, transform })
     setSelection(transform ? transformPoints(selection, transform) : null)
+  }
+
+  function paintSelection(kind) {
+    if (!selection || !editable) return
+    addOperation(active.id, { kind, points: selection, color: settings.color, size: settings.size,
+      opacity: settings.opacity / 100, lockAlpha: !!active.alphaLock })
   }
 
   function crop() {
@@ -173,11 +241,12 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
 
   useEffect(() => {
     function keydown(event) {
-      if (dialog || externalDialog) return
+      if (dialog || externalDialog || panel) return
       const key = event.key.toLowerCase()
       if (key === 'escape') {
         setPanel(null)
         setSelection(null)
+        setPositionTarget(null)
         return
       }
       if ((event.ctrlKey || event.metaKey) && key === 's' && !event.altKey && !event.shiftKey) {
@@ -223,6 +292,7 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
       window.removeEventListener('blur', blur)
     }
   })
+  useEffect(() => { if (!compact || externalDialog) setPanel(null) }, [compact, externalDialog])
 
   async function importImage(event) {
     const file = event.target.files?.[0]
@@ -245,81 +315,192 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
   async function exportImage(format) {
     setBusy(true)
     setMessage(null)
+    let surface, output
     try {
+      if (format === 'project') {
+        const { encodeDrawingProject } = await import('./sketch-files')
+        await saveFile(await encodeDrawingProject(drawing), 'application/json', fileName(drawing.name) + '.linha-desenho.json')
+        return
+      }
       await renderer.ready(drawing.layers)
       const png = format !== 'jpeg'
-      const surface = bitmap(drawing.width, drawing.height)
+      surface = bitmap(drawing.width, drawing.height)
       const ctx = surface.getContext('2d')
       renderer.paint(ctx, { ...drawing, background: format === 'transparent' ? null : drawing.background ?? (png ? null : '#ffffff') })
-      let output = surface
+      output = surface
       if (drawing.frame) {
         output = bitmap(frame.width, frame.height)
         output.getContext('2d').drawImage(surface, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height)
       }
+      if (format === 'pdf') {
+        const { createDrawingPdf } = await import('./sketch-files')
+        await saveFile(await createDrawingPdf(output, drawing.name), 'application/pdf', fileName(drawing.name) + '.pdf')
+        return
+      }
+      if (format === 'psd') {
+        const { encodeDrawingPsd } = await import('./sketch-psd')
+        await saveFile(await encodeDrawingPsd(drawing, renderer, output), 'image/vnd.adobe.photoshop', fileName(drawing.name) + '.psd')
+        return
+      }
       const blob = await encode(output, png ? 'image/png' : 'image/jpeg', .94)
       await saveFile(blob, blob.type, fileName(drawing.name) + (png ? '.png' : '.jpg'))
     } catch {
-      if (mounted.current) setMessage('Não foi possível exportar a imagem.')
+      if (mounted.current) setMessage('Não foi possível exportar o desenho.')
+    } finally {
+      if (output && output !== surface) output.width = 0
+      if (surface) surface.width = 0
+      if (mounted.current) setBusy(false)
+    }
+  }
+
+  async function recordTimelapse() {
+    if (!recording.recording) {
+      setMessage(recording.start() ? 'Timelapse iniciado' : 'O gravador de vídeo está indisponível.')
+      return
+    }
+    setBusy(true)
+    setMessage('Preparando o timelapse…')
+    try {
+      const video = await recording.stop()
+      if (!video) {
+        setMessage('Faça uma alteração no desenho durante a gravação para gerar o vídeo.')
+        return
+      }
+      const extension = video.type.includes('mp4') ? 'mp4' : 'webm'
+      const saved = await saveFile(video, 'video/' + extension, fileName(drawing.name) + '-timelapse.' + extension)
+      setMessage(saved ? 'Timelapse salvo.' : null)
+    } catch {
+      setMessage('Não foi possível salvar o timelapse.')
     } finally {
       if (mounted.current) setBusy(false)
     }
   }
 
-  const renderedDrawing = useMemo(() => alpha == null ? drawing : updateLayer(drawing, active.id, (layer) => ({ ...layer, opacity: alpha })), [drawing, active.id, alpha])
-  const status = message ?? (!active.visible ? 'Camada oculta' : active.locked ? 'Camada bloqueada' : '')
-  const toggle = (key) => setPanel((value) => value === key ? null : key)
-  const close = () => setDialog(null)
+  const renderedDrawing = useMemo(() => {
+    const withOpacity = alpha == null ? drawing : updateLayer(drawing, active.id, (layer) => ({ ...layer, opacity: alpha }))
+    return layerColor ? updateLayer(withOpacity, layerColor.id, (layer) => ({ ...layer, adjustments: layerColor.values })) : withOpacity
+  }, [drawing, active.id, alpha, layerColor])
+  const placement = positionTarget === 'guide' ? 'Toque na folha para mover a guia'
+    : positionTarget === 'symmetry' ? 'Toque na folha para mover o centro da simetria' : null
+  const status = placement ?? message ?? (!active.visible ? 'Camada oculta' : active.locked ? 'Camada bloqueada'
+    : tool === 'erase' && active.alphaLock ? 'A transparência está bloqueada nesta camada' : '')
+  const canLeave = !busy && !recording.recording
+  const close = () => { setDialog(null); setLayerColor(null) }
+  const closePanel = () => setPanel(null)
+  function placeGuide(point) {
+    const x = Math.round((point.x - frame.x) / frame.width * 100)
+    const y = Math.round((point.y - frame.y) / frame.height * 100)
+    setOptions((previous) => ({ ...previous, [positionTarget + 'X']: x, [positionTarget + 'Y']: y }))
+    setPositionTarget(null)
+  }
+  const addLayer = () => append(numberedLayer(drawing.layers))
+  const togglePaper = () => commit((previous) => ({ ...previous, background: previous.background ? null : paper }))
+  const saveNow = () => save(drawing, true)
+  const toggleFocus = () => { setFocused(!focused); closePanel() }
+  const rename = () => setDialog({ type: 'rename' })
+  const brushPanel = <BrushPanel tool={tool} setTool={(key) => chooseTool(key, compact)} settings={settings} recent={recent}
+    change={option} changeBrush={changeBrush} openColor={() => setPanel('color')} usePreset={useBrushPreset} compact={compact} />
+  const layerPanel = <LayerPanel drawing={drawing} active={active} select={select} renderer={renderer} imageVersion={imageVersion} compact={compact}
+    add={addLayer} update={update} layerAction={layerAction} preview={setAlpha}
+    modify={(type, layer) => { closePanel(); setDialog({ type: 'layer-' + type, layer: layer.id }) }} />
+  const context = <SketchContext tool={tool} settings={settings} change={option} selection={selection} editable={editable} editRegion={editRegion}
+    paintSelection={paintSelection} clearSelection={() => setSelection(null)} crop={crop} copy={copy} paste={paste} canPaste={canPaste}
+    position={(target) => { setPositionTarget(target); closePanel() }} canCopy={Boolean(selection && active.visible)} compact={compact} />
+  const documentOptions = <>
+    <MenuOption icon={Pencil} onClick={rename}>Renomear desenho</MenuOption>
+    <MenuOption icon={Square} onClick={togglePaper}>{drawing.background ? 'Usar fundo transparente' : 'Usar fundo de papel'}</MenuOption>
+    <MenuOption icon={FileUp} disabled={!importDrawing || !canLeave} onClick={importDrawing}>Abrir projeto editável</MenuOption>
+    <MenuOption icon={Video} disabled={busy || !recording.supported} onClick={recordTimelapse}>
+      {recording.recording ? 'Finalizar timelapse' : 'Iniciar timelapse'}
+    </MenuOption>
+  </>
+  const exportOptions = <>
+    <MenuOption onClick={() => exportImage('png')}>Baixar PNG</MenuOption>
+    <MenuOption onClick={() => exportImage('transparent')}>Baixar PNG transparente</MenuOption>
+    <MenuOption onClick={() => exportImage('jpeg')}>Baixar JPEG</MenuOption>
+    <MenuOption onClick={() => exportImage('pdf')}>Baixar PDF</MenuOption>
+    <MenuOption onClick={() => exportImage('psd')}>Baixar PSD em camadas</MenuOption>
+    <MenuOption onClick={() => exportImage('project')}>Baixar projeto editável</MenuOption>
+  </>
+  const focusButton = <IconButton label={focused ? 'Mostrar ferramentas' : 'Modo foco'} aria-pressed={focused}
+    onClick={toggleFocus}>{focused ? <Minimize2 size={19} /> : <Expand size={19} />}</IconButton>
   const dialogLayer = dialog?.layer && drawing.layers.find((layer) => layer.id === dialog.layer)
   const textOperation = dialogLayer?.strokes.find((operation) => operation.kind === 'text')
 
   return <>
-    <header className="studio-header">
+    <input ref={input} type="file" hidden accept="image/*" onChange={importImage} />
+    {compact ? <header className="studio-touch-header">
+      <IconButton label="Meus desenhos" onClick={gallery} disabled={!canLeave}><ArrowLeft size={21} /></IconButton>
+      <div className="studio-touch-document">
+        <h1 title={drawing.name}>{drawing.name}</h1>
+        <span className="studio-storage" role="status" data-status={recording.recording ? 'recording' : storage}>
+          {recording.recording ? 'Gravando timelapse' : storageLabels[storage]}
+        </span>
+      </div>
+      <IconButton className="studio-touch-save" label="Salvar desenho" disabled={busy} onClick={saveNow}><Save size={19} /></IconButton>
+      {focusButton}
+      <Menu label="Opções do desenho" trigger={(props) => <IconButton {...props} label="Opções do desenho" disabled={busy}><MoreHorizontal size={22} /></IconButton>}>
+        <MenuOption icon={Plus} disabled={!canLeave} onClick={newDrawing}>Novo desenho</MenuOption>
+        {documentOptions}
+        <MenuOption icon={ImagePlus} onClick={() => input.current.click()}>Importar imagem</MenuOption>
+        <hr />
+        {exportOptions}
+        <hr />
+        <MenuOption icon={ArrowLeft} disabled={!canLeave} onClick={leave}>Voltar à biblioteca</MenuOption>
+      </Menu>
+    </header> : <header className="studio-header">
       <div className="studio-brand">
-        <button type="button" className="studio-return" aria-label="Voltar à biblioteca" onClick={leave}><ArrowLeft size={18} /><span>Biblioteca</span></button>
+        <button type="button" className="studio-return" aria-label="Voltar à biblioteca" onClick={leave} disabled={!canLeave}><ArrowLeft size={18} /><span>Biblioteca</span></button>
         <h1>Estúdio de desenho</h1>
       </div>
       <div className="studio-document">
         <Menu label="Opções do desenho" trigger={(props) => <button {...props} className="studio-name"><span>{drawing.name}</span><ChevronDown size={15} /></button>}>
-          <MenuOption icon={Pencil} onClick={() => setDialog({ type: 'rename' })}>Renomear desenho</MenuOption>
-          <MenuOption icon={Square} onClick={() => commit((previous) => ({ ...previous, background: previous.background ? null : paper }))}>
-            {drawing.background ? 'Usar fundo transparente' : 'Usar fundo de papel'}
-          </MenuOption>
+          {documentOptions}
         </Menu>
-        <span className="studio-storage" role="status" data-status={storage}>{storageLabels[storage]}</span>
+        <span className="studio-storage" role="status" data-status={recording.recording ? 'recording' : storage}>
+          {recording.recording ? 'Gravando timelapse' : storageLabels[storage]}
+        </span>
       </div>
       <div className="studio-header-actions">
-        <button type="button" className="button secondary studio-new" aria-label="Novo desenho" aria-haspopup="dialog" disabled={busy} onClick={newDrawing}>
+        <button type="button" className="button secondary studio-new" aria-label="Novo desenho" aria-haspopup="dialog" disabled={!canLeave} onClick={newDrawing}>
           <Plus size={17} /><span>Novo<span className="studio-new-suffix"> desenho</span></span>
         </button>
-        <button type="button" className="button primary studio-save" aria-label="Salvar desenho" aria-keyshortcuts="Control+S Meta+S" disabled={busy} onClick={() => save(drawing, true)}>
+        <button type="button" className="button primary studio-save" aria-label="Salvar desenho" aria-keyshortcuts="Control+S Meta+S" disabled={busy} onClick={saveNow}>
           <Save size={17} />Salvar
         </button>
-        <button type="button" className="studio-gallery-button" aria-label="Meus desenhos" title="Meus desenhos" disabled={busy} onClick={gallery}><Images size={18} /><span>Desenhos</span></button>
+        <button type="button" className="studio-gallery-button" aria-label="Meus desenhos" title="Meus desenhos" disabled={!canLeave} onClick={gallery}><Images size={18} /><span>Desenhos</span></button>
         <IconButton label="Importar imagem" disabled={busy} onClick={() => input.current.click()}><ImagePlus size={19} /></IconButton>
-        <input ref={input} type="file" hidden accept="image/*" onChange={importImage} />
-        <IconButton label={focused ? 'Mostrar ferramentas' : 'Modo foco'} aria-pressed={focused}
-          onClick={() => { setFocused(!focused); setPanel(null) }}>{focused ? <Minimize2 size={18} /> : <Expand size={18} />}</IconButton>
+        {focusButton}
         <Menu label="Exportar desenho" trigger={(props) => <button {...props} type="button" title="Exportar desenho" disabled={busy} className="button secondary studio-export"><Download size={17} /><span>Exportar</span></button>}>
-          <MenuOption onClick={() => exportImage('png')}>Baixar PNG</MenuOption>
-          <MenuOption onClick={() => exportImage('transparent')}>Baixar PNG transparente</MenuOption>
-          <MenuOption onClick={() => exportImage('jpeg')}>Baixar JPEG</MenuOption>
+          {exportOptions}
         </Menu>
       </div>
-    </header>
-    {!focused && <SketchToolbar tool={tool} setTool={chooseTool} history={history} undo={() => undoRedo('undo')} redo={() => undoRedo('redo')} panel={panel} togglePanel={toggle} />}
-    {!focused && <SketchContext tool={tool} settings={settings} change={option} selection={selection} editable={editable} editRegion={editRegion}
-      clearSelection={() => setSelection(null)} crop={crop} copy={copy} paste={paste} canPaste={canPaste} canCopy={Boolean(selection && active.visible)} />}
-    <div className={'studio-layout' + (focused ? ' is-focused' : '')}>
-      {!focused && <BrushPanel tool={tool} setTool={chooseTool} settings={settings} recent={recent} change={option} changeBrush={changeBrush} mobile={panel === 'brushes'} close={() => setPanel(null)} />}
+    </header>}
+    {!focused && !compact && <>
+      <SketchToolbar tool={tool} setTool={chooseTool} history={history} undo={() => undoRedo('undo')} redo={() => undoRedo('redo')} />
+      {context}
+    </>}
+    <div className={'studio-layout' + (compact ? ' studio-layout-compact' : '') + (focused ? ' is-focused' : '')}>
+      {!focused && (compact ? <SketchMobileToolbar tool={tool} color={options.color} history={history}
+        undo={() => undoRedo('undo')} redo={() => undoRedo('redo')} open={setPanel}
+        guided={Boolean(selection || settings.guide !== 'none' || settings.symmetry !== 'none')} /> : brushPanel)}
       <SketchCanvas drawing={renderedDrawing} active={active} tool={tool} settings={settings} renderer={renderer} imageVersion={imageVersion}
-        selection={selection} setSelection={setSelection} addOperation={addOperation} space={space} status={status}
+        selection={selection} setSelection={setSelection} addOperation={addOperation} space={space} status={status} compact={compact}
+        recordFrame={recording.recordFrame}
+        positionTarget={positionTarget} positionGuide={placeGuide}
         pickColor={(value) => { chooseTool(lastBrush.current); option('color', value) }}
         insertText={(point) => setDialog({ type: 'new-text', point })} showHelp={() => setDialog({ type: 'help' })} />
-      {!focused && <LayerPanel drawing={drawing} active={active} select={select} renderer={renderer} imageVersion={imageVersion} mobile={panel === 'layers'}
-        add={() => append(numberedLayer(drawing.layers))} update={update} layerAction={layerAction} preview={setAlpha}
-        modify={(type, layer) => setDialog({ type: 'layer-' + type, layer: layer.id })} close={() => setPanel(null)} />}
-      {!focused && panel && <button type="button" className="studio-scrim" aria-label="Fechar painel" onClick={() => setPanel(null)} />}
+      {!focused && !compact && layerPanel}
+      {!focused && compact && <SketchBrushRail tool={tool} choose={chooseTool} open={() => setPanel('brushes')} />}
     </div>
+    {panel && (compact || panel === 'color') && !externalDialog && <Dialog title={panelTitles[panel]} className={'studio-touch-panel studio-touch-panel--' + panel} close={closePanel}
+      headerAction={panel === 'layers' && <IconButton label="Nova camada" onClick={addLayer}><Plus size={21} /></IconButton>}>
+      {panel === 'brushes' && brushPanel}
+      {panel === 'layers' && layerPanel}
+      {panel === 'tools' && <>{context}<SketchMobileTools tool={tool} choose={(key) => chooseTool(key, true)} /></>}
+      {panel === 'color' && <SketchColorPicker color={options.color} recent={recent} sample={() => chooseTool('sample')}
+        apply={(value) => { option('color', value); closePanel() }} />}
+    </Dialog>}
     {dialog?.type === 'help' && <DrawingHelp close={close} />}
     {dialog?.type === 'rename' && <DrawingNameForm title="Renomear desenho" initial={drawing.name} close={close} submit={(name) => {
       if (!name) return
@@ -331,6 +512,17 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
       update(dialogLayer.id, { name })
       close()
     }} />}
+    {dialog?.type === 'layer-color' && dialogLayer && <LayerColorForm initial={dialogLayer.adjustments} close={close}
+      preview={(values) => setLayerColor({ id: dialogLayer.id, values })}
+      apply={(adjustments) => { update(dialogLayer.id, { adjustments }); close() }} />}
+    {(dialog?.type === 'merge' || dialog?.type === 'merge-visible') && <Dialog
+      title={dialog.type === 'merge' ? 'Mesclar com a camada abaixo?' : 'Mesclar camadas visíveis?'} close={close}>
+      <p>{dialog.type === 'merge' ? 'As duas camadas serão combinadas em uma imagem.' : 'As camadas visíveis e o papel serão combinados em uma imagem. Camadas ocultas continuam separadas.'}</p>
+      <div className="dialog-actions">
+        <button type="button" className="button secondary" onClick={close}>Cancelar</button>
+        <button type="button" className="button primary" onClick={() => mergeLayers(dialog.type, dialog.layer)}>Mesclar</button>
+      </div>
+    </Dialog>}
     {dialog?.type === 'new-text' && <DrawingTextForm operation={{ ...dialog.point, color: options.color }} close={close} change={(operation) => {
       append({ ...newLayer(operation.text.replace(/\s+/g, ' ').slice(0, 38)), strokes: [operation] })
       close()
