@@ -12,7 +12,7 @@ Permitir que a pessoa escreva, anote PDFs, organize seus arquivos e desenhe no n
 
 ## Operating Context
 
-A biblioteca reúne cadernos, notas de texto, quadros brancos, PDFs e pastas. O editor atende escrita e anotação em páginas. O estúdio permite desenhar e organizar o trabalho em camadas.
+A biblioteca reúne cadernos, notas de texto, quadros brancos, PDFs e pastas. O editor atende escrita e anotação em páginas. O estúdio permite desenhar e organizar o trabalho em camadas. A galeria Meus desenhos mostra prévias dos trabalhos salvos e abre cada um para edição.
 
 ## Capabilities and Constraints
 

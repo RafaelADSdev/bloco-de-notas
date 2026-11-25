@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownToLine, ArrowLeft, BookOpen, ChevronDown, ChevronRight, CircleHelp, CloudOff, Copy, FileText, Folder, FolderInput,
-  Grid2X2, Layout, List, Menu as MenuIcon, Moon, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Sparkles, Star, Sun, Trash2, Upload, X,
+  Grid2X2, Images, Layout, List, Menu as MenuIcon, Moon, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Sparkles, Star, Sun, Trash2, Upload, X,
 } from 'lucide-react'
 import { colors, dateLabel, isTrashed, labels, matches, searchable } from './model'
 import { Brand, IconButton, itemIcons, Menu, MenuOption } from './ui'
@@ -10,6 +10,7 @@ const navigation = [
   { key: 'home', title: 'Biblioteca', icon: BookOpen },
   { key: 'favorites', title: 'Favoritos', icon: Star },
   { key: 'studio', title: 'Estúdio de desenho', icon: Pencil },
+  { key: 'drawings', title: 'Meus desenhos', icon: Images },
   { key: 'trash', title: 'Lixeira', icon: Trash2 },
 ]
 

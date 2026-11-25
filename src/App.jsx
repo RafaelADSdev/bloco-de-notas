@@ -17,7 +17,7 @@ function currentRoute() {
   return {
     page: !path || path === '/login' ? 'welcome' : path === '/editor' ? 'editor' : 'library',
     doc: params.get('id'), folder: params.get('folder'),
-    section: ['favorites', 'trash', 'studio'].includes(section) ? section : 'home',
+    section: ['favorites', 'trash', 'studio', 'drawings'].includes(section) ? section : 'home',
   }
 }
 
@@ -236,7 +236,9 @@ export default function App() {
           leave={() => library(route.section, route.section === 'home' ? doc.parent : null)}
           act={(action) => act(action, doc)} storageError={storageError} />
       </Suspense> : <main className="loading-view">{ready ? <><h1>Documento indisponível</h1><button className="button primary" onClick={() => library('home', null, true)}>Voltar à biblioteca</button></> : 'Abrindo documento…'}</main>)
-      : route.section === 'studio' ? <Suspense fallback={<main className="loading-view">Abrindo estúdio de desenho…</main>}><SketchStudio leave={() => library()} /></Suspense> : <Library items={items} section={route.section} folderId={validFolder} select={library} open={open} create={requestCreate} act={act}
+      : ['studio', 'drawings'].includes(route.section) ? <Suspense fallback={<main className="loading-view">Abrindo desenhos…</main>}>
+        <SketchStudio view={route.section} leave={() => library()} showGallery={() => library('drawings')} showEditor={() => library('studio')} />
+      </Suspense> : <Library items={items} section={route.section} folderId={validFolder} select={library} open={open} create={requestCreate} act={act}
           busy={!ready} storageError={storageError} backup={exportLibrary} help={() => setDialog({ type: 'help' })}
           theme={theme} changeTheme={changeTheme} motionSettings={() => setDialog({ type: 'motion' })} />}
     <input ref={importInput} type="file" accept={importAccept} multiple hidden onChange={(event) => {

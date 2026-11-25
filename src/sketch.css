@@ -12,6 +12,7 @@
   color: var(--ink);
   background: var(--studio-panel);
 }
+.studio-app[hidden] { display: none; }
 
 .studio-header {
   display: grid;
@@ -266,12 +267,42 @@
 .studio-layer-settings { margin-top: 13px; padding-bottom: 3px; }
 .studio-scrim { display: none; }
 
-.studio-dialog-gallery { display: grid; gap: 5px; max-height: 52vh; overflow-y: auto; }
-.studio-gallery-row { display: flex; align-items: center; gap: 6px; padding: 4px; border: 1px solid var(--studio-line); border-radius: 7px; }
-.studio-gallery-row > button:first-child { flex: 1; text-align: left; display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 6px; border-radius: 5px; }
-.studio-gallery-row > button:first-child:hover { background: var(--accent-tint); }
-.studio-gallery-row span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.studio-gallery-row small { display: block; font-size: 11px; color: var(--muted); }
+.sketch-gallery .topbar .back-link { min-height: 44px; }
+.drawing-grid { list-style: none; padding: 0; margin: 0; }
+.drawing-preview {
+  position: relative;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  height: clamp(144px, 18vw, 234px);
+  padding: 13px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 6px 6px 0 0;
+  background: var(--stage);
+}
+.drawing-preview canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  background: conic-gradient(#dfddd7 25%, #f8f5ee 0 50%, #dfddd7 0 75%, #f8f5ee 0) 0 0 / 12px 12px;
+  box-shadow: 0 4px 16px var(--shadow);
+}
+.drawing-preview[data-preview='error'] canvas { visibility: hidden; }
+.drawing-preview > span { position: absolute; color: var(--muted); font-size: 12px; }
+.drawing-card .item-details { min-height: 68px; }
+.drawing-card .item-meta { column-gap: 9px; }
+.drawing-card .drawing-recent { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); }
+.drawing-card .drawing-recent::before { display: none; }
+.drawing-delete { position: absolute; right: 7px; bottom: 12px; color: var(--muted); }
+.drawing-delete:hover:not(:disabled) { color: var(--danger); background: var(--danger-tint); }
+.gallery-empty { min-height: 232px; }
+
+@media (max-width: 550px) {
+  .gallery-create-suffix { display: none; }
+  .drawing-preview { padding: 8px; height: 132px; }
+  .drawing-card .item-details { min-height: 75px; padding-right: 45px; }
+  .drawing-delete { width: 40px; height: 44px; right: 3px; bottom: 7px; }
+}
 .studio-dialog-select { min-height: 42px; font-size: 14px; }
 .studio-text-options { display: grid; grid-template-columns: minmax(0, 1fr) 80px 56px; gap: 9px; }
 .studio-text-options input { min-width: 0; }

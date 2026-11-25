@@ -1,24 +1,6 @@
 import { useState } from 'react'
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react'
-import { Dialog, IconButton } from './ui'
-import { canvasSizes, clamp, drawingFrame } from './sketch-model'
-
-export function DrawingGallery({ drawings, current, open, remove, create, close }) {
-  return <Dialog title="Meus desenhos" close={close}>
-    <div className="studio-dialog-gallery">
-      {drawings.map((drawing) => {
-        const { width, height } = drawingFrame(drawing)
-        return <div className="studio-gallery-row" key={drawing.id}>
-        <button type="button" onClick={() => open(drawing.id)} aria-current={drawing.id === current ? 'true' : undefined}>
-          <Pencil size={17} /><span>{drawing.name}<small>{width} × {height} px</small></span>
-          {drawing.id === current && <Check size={16} />}
-        </button>
-        <IconButton label={`Excluir ${drawing.name}`} onClick={() => remove(drawing)} disabled={drawings.length === 1}><Trash2 size={17} /></IconButton>
-      </div>})}
-    </div>
-    <div className="dialog-actions"><button className="button primary" type="button" onClick={create}><Plus size={17} /> Novo desenho</button></div>
-  </Dialog>
-}
+import { Dialog } from './ui'
+import { canvasSizes, clamp } from './sketch-model'
 
 export function DrawingNameForm({ title, initial = '', create, submit, close }) {
   const [name, setName] = useState(initial)

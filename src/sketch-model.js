@@ -56,17 +56,18 @@ export function newDrawing(name = 'Desenho sem título', width = 1200, height = 
 }
 
 export function migrateStudio() {
-  const drawing = newDrawing()
   try {
     const layers = JSON.parse(localStorage.getItem('linha-clara-studio'))
     if (Array.isArray(layers) && layers.length) {
+      const drawing = newDrawing()
       drawing.layers = layers.map((layer) => ({ ...newLayer(layer.name), ...layer }))
       drawing.active = drawing.layers[0].id
+      return { drawings: [drawing], active: drawing.id }
     }
   } catch {
-    // A fresh drawing is available even if the old browser storage cannot be read.
+    // Opening the editor can still start a drawing if legacy storage is unavailable.
   }
-  return { drawings: [drawing], active: drawing.id }
+  return { drawings: [], active: null }
 }
 
 export function editHistory(state, action) {

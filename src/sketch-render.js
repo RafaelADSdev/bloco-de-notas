@@ -1,4 +1,5 @@
 import { bitmap, flood, polygon, transformRegion } from './sketch-raster'
+import { drawingFrame } from './sketch-model'
 
 const legacyBrushes = { Lápis: 'pencil', Caneta: 'ink', Pincel: 'brush', Marcador: 'marker', Borracha: 'erase', Linha: 'line', Retângulo: 'rectangle', Elipse: 'ellipse' }
 
@@ -209,5 +210,34 @@ export function studioRenderer(width, height, imageReady) {
       await Promise.all(pending.map((image) => image.ready))
       if (pending.some((image) => image.error)) throw new Error('Não foi possível carregar uma das imagens.')
     },
+    release(layers) {
+      scratch.canvas.width = 0
+      for (const { ctx } of cache.values()) ctx.canvas.width = 0
+      cache.clear()
+      for (const layer of layers) {
+        for (const operation of layer.strokes) {
+          if (operation.kind !== 'image') continue
+          images.get(operation.blob)?.bitmap?.close()
+          images.delete(operation.blob)
+        }
+      }
+    },
+  }
+}
+
+export async function drawingThumbnail(drawing, width, height) {
+  const layers = drawing.layers.filter((layer) => layer.visible)
+  const renderer = studioRenderer(drawing.width, drawing.height, () => {})
+  const surface = bitmap(drawing.width, drawing.height)
+  try {
+    await renderer.ready(layers)
+    renderer.paint(surface.getContext('2d'), { ...drawing, layers })
+    const frame = drawingFrame(drawing)
+    const preview = bitmap(width, height)
+    preview.getContext('2d').drawImage(surface, frame.x, frame.y, frame.width, frame.height, 0, 0, width, height)
+    return preview
+  } finally {
+    renderer.release(layers)
+    surface.width = 0
   }
 }

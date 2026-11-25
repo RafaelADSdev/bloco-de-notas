@@ -298,7 +298,7 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
         <button type="button" className="button primary studio-save" aria-label="Salvar desenho" aria-keyshortcuts="Control+S Meta+S" disabled={busy} onClick={() => save(drawing, true)}>
           <Save size={17} />Salvar
         </button>
-        <button type="button" className="studio-gallery-button" aria-label="Meus desenhos" aria-haspopup="dialog" title="Meus desenhos" disabled={busy} onClick={gallery}><Images size={18} /><span>Desenhos</span></button>
+        <button type="button" className="studio-gallery-button" aria-label="Meus desenhos" title="Meus desenhos" disabled={busy} onClick={gallery}><Images size={18} /><span>Desenhos</span></button>
         <IconButton label="Importar imagem" disabled={busy} onClick={() => input.current.click()}><ImagePlus size={19} /></IconButton>
         <input ref={input} type="file" hidden accept="image/*" onChange={importImage} />
         <IconButton label={focused ? 'Mostrar ferramentas' : 'Modo foco'} aria-pressed={focused}
