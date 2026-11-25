@@ -1,0 +1,97 @@
+.welcome {
+  --welcome-gutter: clamp(18px, 4.75vw, 74px);
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--canvas);
+  color: var(--ink);
+}
+.welcome-header, .welcome-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-inline: var(--welcome-gutter);
+}
+.welcome-header { min-height: 73px; border-bottom: 1px solid var(--line); }
+.welcome-brand { display: inline-flex; text-decoration: none; border-radius: 7px; }
+.welcome-help { min-height: 42px; }
+.welcome-main {
+  width: min(100%, 1500px);
+  margin-inline: auto;
+  padding: clamp(28px, 4.6vw, 72px) var(--welcome-gutter);
+  display: grid;
+  grid-template-columns: minmax(0, .91fr) minmax(0, 1.11fr);
+  gap: clamp(36px, 6vw, 102px);
+  align-items: center;
+}
+.welcome-workspace { min-width: 0; }
+.welcome-workspace h1 {
+  margin: 0;
+  font: 400 clamp(70px, 7.1vw, 96px)/.86 var(--serif);
+  letter-spacing: -.032em;
+  text-wrap: balance;
+}
+.welcome-workspace h1 em { color: var(--accent); font-weight: inherit; }
+.welcome-description { max-width: 34ch; margin: 23px 0 27px; color: var(--muted); font-size: 17px; line-height: 1.5; }
+.welcome .welcome-open { min-height: 51px; padding: 0 15px; font-size: 14px; min-width: 206px; }
+.welcome-open svg:last-child { margin-left: auto; }
+.welcome-actions, .welcome-transfer { display: flex; flex-wrap: wrap; gap: 8px; }
+.welcome-actions { margin-top: 10px; }
+.welcome-actions .button { min-height: 43px; }
+.welcome-storage { margin-top: 33px; padding-top: 19px; border-top: 1px solid var(--border); max-width: 424px; }
+.welcome-storage h2 { font-size: 15px; font-weight: 700; margin: 0 0 5px; }
+.welcome-storage p { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 4px; max-width: 47ch; }
+.welcome-transfer { gap: 8px 16px; }
+.welcome-transfer .button { min-height: 42px; }
+.welcome-storage .welcome-storage-error { color: var(--danger); margin-top: 8px; }
+.welcome-visual { align-self: stretch; display: grid; padding: 7px; min-width: 0; border: 1px solid var(--border); background: var(--sidebar); border-radius: 5px; }
+.welcome-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 530px;
+  max-height: min(690px, max(525px, calc(100dvh - 292px)));
+  aspect-ratio: 1 / 1.06;
+  object-fit: cover;
+  object-position: 54% 64%;
+  background: #29251f;
+  border-radius: 2px;
+}
+.welcome-footer { min-height: 57px; border-top: 1px solid var(--line); }
+.welcome-footer nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0 21px; }
+.welcome-footer button, .welcome-footer a { min-height: 40px; display: inline-flex; align-items: center; gap: 5px; background: none; padding: 0; border: 0; text-decoration: none; color: var(--muted); font-size: 12px; }
+.welcome-footer a { color: var(--accent); }
+.welcome-footer button:hover, .welcome-footer a:hover { text-decoration: underline; }
+.welcome-external-domain { display: inline-flex; align-items: center; gap: 4px; }
+.welcome-sign-in { margin-top: 17px; padding-top: 13px; border-top: 1px solid var(--line); }
+.welcome-sign-in h3 { margin: 0; font-size: 15px; }
+.welcome-sign-in-links { display: grid; justify-items: start; gap: 9px; margin-top: 12px; }
+.welcome-sign-in-links a { display: inline-flex; gap: 5px; align-items: center; color: var(--accent); font-size: 13px; }
+
+@media (max-width: 950px) {
+  .welcome-main { gap: 29px; }
+  .welcome-workspace h1 { font-size: clamp(62px, 8.9vw, 78px); }
+  .welcome-visual img { min-height: 490px; }
+}
+@media (max-width: 720px) {
+  .welcome-header { min-height: 65px; }
+  .welcome-main { grid-template-columns: minmax(0, 1fr); gap: 18px; padding-block: 38px 27px; }
+  .welcome-workspace h1 { font-size: clamp(60px, 12.6vw, 74px); }
+  .welcome-title-break { display: none; }
+  .welcome-description { font-size: 15px; margin: 14px 0 18px; }
+  .welcome-actions { margin-top: 8px; }
+  .welcome-storage { margin-top: 23px; padding-top: 12px; }
+  .welcome-visual { padding: 5px; }
+  .welcome-visual img { min-height: 0; max-height: 340px; aspect-ratio: 1.68; object-position: 50% 67%; }
+  .welcome-footer { padding-block: 5px; }
+  .welcome-footer nav { gap: 0 14px; }
+  .welcome-footer button, .welcome-footer a { min-height: 44px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-visual img { animation: welcome-reveal 380ms var(--ease-out); }
+  @keyframes welcome-reveal {
+    from { opacity: .18; clip-path: inset(0 0 11% 0); }
+    to { opacity: 1; clip-path: inset(0); }
+  }
+}
