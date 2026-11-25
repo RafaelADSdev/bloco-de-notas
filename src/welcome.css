@@ -82,10 +82,3 @@
   .welcome-footer nav { gap: 0 14px; }
   .welcome-footer button { min-height: 44px; }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .welcome-visual img { animation: welcome-reveal 380ms var(--ease-out); }
-  @keyframes welcome-reveal {
-    from { opacity: .18; clip-path: inset(0 0 11% 0); }
-    to { opacity: 1; clip-path: inset(0); }
-  }
-}

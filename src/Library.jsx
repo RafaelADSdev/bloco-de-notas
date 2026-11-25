@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDownToLine, ArrowLeft, BookOpen, ChevronDown, ChevronRight, CircleHelp, CloudOff, Copy, FileText, Folder, FolderInput,
-  Grid2X2, Layout, List, Menu as MenuIcon, Moon, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Star, Sun, Trash2, Upload, X,
+  Grid2X2, Layout, List, Menu as MenuIcon, Moon, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Sparkles, Star, Sun, Trash2, Upload, X,
 } from 'lucide-react'
 import { colors, dateLabel, isTrashed, labels, matches, searchable } from './model'
 import { Brand, IconButton, itemIcons, Menu, MenuOption } from './ui'
@@ -72,7 +72,7 @@ const sorters = {
   name: (a, b) => a.title.localeCompare(b.title, 'pt-BR'),
   oldest: (a, b) => a.updated - b.updated,
 }
-export function Library({ items, section, folderId, select, open, create, act, busy, storageError, backup, help, theme, changeTheme }) {
+export function Library({ items, section, folderId, select, open, create, act, busy, storageError, backup, help, theme, changeTheme, motionSettings }) {
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [sort, setSort] = useState('recent')
@@ -95,6 +95,7 @@ export function Library({ items, section, folderId, select, open, create, act, b
   const documents = rootView ? visible.filter((item) => item.type !== 'folder') : visible
   const visibleFolders = rootView ? visible.filter((item) => item.type === 'folder') : []
   const back = folder ? index.get(folder.parent) : null
+  const viewKey = section + ':' + (folderId ?? '')
 
   useEffect(() => {
     function shortcuts(event) {
@@ -183,13 +184,14 @@ export function Library({ items, section, folderId, select, open, create, act, b
           <Menu label="Opções do espaço" trigger={(props) => <button {...props} className="icon-button space-options" title="Opções do espaço"><MoreHorizontal size={20} /></button>}>
             <MenuOption icon={ArrowDownToLine} onClick={backup}>Baixar cópia da biblioteca</MenuOption>
             <MenuOption icon={Upload} onClick={() => create('import', null)}>Importar cópia ou arquivo</MenuOption>
+            <MenuOption icon={Sparkles} onClick={motionSettings}>Animações</MenuOption>
             <MenuOption icon={CircleHelp} onClick={help}>Sobre o armazenamento</MenuOption>
           </Menu>
         </div>
       </header>
       <main className="workspace" id="main-content">
         {storageError && <div className="notice error" role="alert">{storageError}</div>}
-        <div className="heading-row">
+        <div className="heading-row" key={'heading:' + viewKey}>
           <div>
             {folder && <button className="back-link" onClick={() => go('home', back?.id ?? null)}><ArrowLeft size={15} />{back?.title ?? 'Biblioteca'}</button>}
             <h1>{normalized ? 'Resultados da busca' : title}</h1>
@@ -217,7 +219,7 @@ export function Library({ items, section, folderId, select, open, create, act, b
               </div>
             </div>
         </div>
-        <section className="collection" aria-labelledby="collection-title">
+        <section className="collection" key={'items:' + viewKey} aria-labelledby="collection-title">
           <div className="section-heading">
             <h2 id="collection-title">{rootView ? 'Documentos' : 'Itens'} <span>{documents.length}</span></h2>
           </div>

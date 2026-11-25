@@ -100,7 +100,3 @@
 .editor-title > svg { flex-shrink: 0; }
 .page-thumbnail-button:hover { color: var(--accent); }
 .page-controls, .zoom-controls { font-variant-numeric: tabular-nums; }
-
-@media (prefers-reduced-motion: no-preference) and (max-width: 700px) {
-  .page-sidebar { animation: nav-in 160ms var(--ease-out); }
-}

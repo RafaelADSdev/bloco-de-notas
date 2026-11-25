@@ -21,7 +21,7 @@
 
 ![Biblioteca do Linha Clara no tema escuro, com busca, filtros, favoritos, pastas e capas de documentos.](docs/media/biblioteca.webp)
 
-O tema escuro destaca o papel e as ferramentas ativas. O seletor da biblioteca alterna entre **Escuro** e **Claro** e guarda a escolha. Os dois temas preservam as cores do papel e da tinta. As transições respeitam a preferência por movimento reduzido.
+O tema escuro destaca o papel e as ferramentas ativas. O seletor da biblioteca alterna entre **Escuro** e **Claro** e guarda a escolha. Os dois temas preservam as cores do papel e da tinta. Em **Opções do espaço → Animações**, você pode seguir a preferência do dispositivo ou escolher o movimento completo ou reduzido para o Linha Clara.
 
 <details>
 <summary>Veja o editor, o estúdio e a biblioteca no celular</summary>

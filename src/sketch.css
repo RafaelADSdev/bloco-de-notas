@@ -318,7 +318,7 @@
   .studio-toolbar-group + .studio-toolbar-group { padding-left: 6px; }
   .studio-toolbar .icon-button { width: 37px; height: 40px; }
   .studio-mobile-tools { display: flex; }
-  .studio-layout { grid-template-columns: minmax(0, 1fr); }
+  .studio-layout { grid-template-columns: minmax(0, 1fr); overflow-x: clip; }
   .studio-mobile-close { display: inline-grid; }
   .studio-panel {
     position: absolute;
@@ -355,9 +355,4 @@
   .studio-brand h1 { font-size: 15px; }
   .studio-header-actions { gap: 2px; }
   .studio-new > svg, .studio-save > svg { display: none; }
-}
-
-
-@media (prefers-reduced-motion: no-preference) and (max-width: 760px) {
-  .studio-panel.mobile-open { animation: panel-in 150ms var(--ease-out); }
 }

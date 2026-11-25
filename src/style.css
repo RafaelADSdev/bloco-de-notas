@@ -1,5 +1,6 @@
 @import './editor.css';
 @import './welcome.css';
+@import './motion.css';
 
 :root {
   color-scheme: dark;
@@ -273,15 +274,4 @@ kbd { white-space: nowrap; color: var(--muted); background: var(--surface); line
   .folder-card .item-open { padding-left: 7px; }
   .folder-icon { width: 29px; height: 31px; }
   .popover button { min-height: 44px; }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .button, .icon-button, .item-card, .sidebar nav button { transition: color 140ms var(--ease-out), background-color 140ms var(--ease-out), border-color 140ms var(--ease-out); }
-  .button:active:not(:disabled) { translate: 0 1px; }
-  .popover, .dialog[open], .toast { animation: panel-in 150ms var(--ease-out); }
-  .sidebar.sidebar-open { animation: nav-in 160ms var(--ease-out); }
-  .heading-row, .editor-header .editor-nav, .studio-header .studio-brand { animation: workspace-in 205ms var(--ease-out); }
-  @keyframes workspace-in { from { opacity: .48; translate: 0 5px; } }
-  @keyframes panel-in { from { opacity: 0; translate: 0 -4px; } }
-  @keyframes nav-in { from { opacity: .65; translate: -12px 0; } }
 }

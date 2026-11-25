@@ -208,7 +208,7 @@ Campos usam fundo próprio e contorno de controle. O foco de teclado recebe anel
 
 ### Navigation and panels
 
-O destino atual recebe fundo âmbar tonal, texto em âmbar e borda discreta. Ícones de traço acompanham as ações. Diálogos usam superfície elevada, sombra difusa e fundo de bloqueio translúcido. Transições são breves e condicionadas à preferência de movimento, com 140ms nos estados de controle e 150–205ms nas entradas de painel e de área de trabalho. A fotografia tem revelação própria de 380ms.
+O destino atual recebe fundo âmbar tonal, texto em âmbar e borda discreta. Ícones de traço acompanham as ações. Diálogos usam superfície elevada, sombra difusa e fundo de bloqueio translúcido. A fotografia da abertura é revelada em 680 ms, com uma passagem breve de luz. Menus, painéis e áreas de trabalho entram em 180–270 ms. As capas têm entrada escalonada e se deslocam levemente ao passar o cursor. A folha do editor muda de opacidade durante a entrada e mantém a posição. O movimento segue a preferência do dispositivo por padrão e pode ser ajustado nas opções da biblioteca.
 
 ### Document cards
 

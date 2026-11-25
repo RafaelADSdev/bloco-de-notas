@@ -24,6 +24,7 @@ function currentRoute() {
 export default function App() {
   const [route, setRoute] = useState(currentRoute)
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark')
+  const [motion, setMotion] = useState(() => document.documentElement.dataset.motion ?? 'system')
   const [items, setItems] = useState([])
   const latest = useRef([])
   const [ready, setReady] = useState(false)
@@ -85,6 +86,18 @@ export default function App() {
       localStorage.setItem('linha-clara:theme', next)
     } catch {
       // The selected theme still applies when browser settings block storage.
+    }
+  }
+
+  function changeMotion(next) {
+    if (next === 'system') delete document.documentElement.dataset.motion
+    else document.documentElement.dataset.motion = next
+    setMotion(next)
+    try {
+      if (next === 'system') localStorage.removeItem('linha-clara:motion')
+      else localStorage.setItem('linha-clara:motion', next)
+    } catch {
+      // The selection still applies to the current page.
     }
   }
 
@@ -225,7 +238,7 @@ export default function App() {
       </Suspense> : <main className="loading-view">{ready ? <><h1>Documento indisponível</h1><button className="button primary" onClick={() => library('home', null, true)}>Voltar à biblioteca</button></> : 'Abrindo documento…'}</main>)
       : route.section === 'studio' ? <Suspense fallback={<main className="loading-view">Abrindo estúdio de desenho…</main>}><SketchStudio leave={() => library()} /></Suspense> : <Library items={items} section={route.section} folderId={validFolder} select={library} open={open} create={requestCreate} act={act}
           busy={!ready} storageError={storageError} backup={exportLibrary} help={() => setDialog({ type: 'help' })}
-          theme={theme} changeTheme={changeTheme} />}
+          theme={theme} changeTheme={changeTheme} motionSettings={() => setDialog({ type: 'motion' })} />}
     <input ref={importInput} type="file" accept={importAccept} multiple hidden onChange={(event) => {
       const files = Array.from(event.currentTarget.files)
       event.currentTarget.value = ''
@@ -303,6 +316,17 @@ export default function App() {
     {dialog?.type === 'help' && <Dialog title="Seu espaço local" close={close}>
       <div className="dialog-help"><CloudOff size={24} /><p>Seus documentos são salvos neste navegador. Baixe uma cópia antes de limpar os dados do site ou para levar seus documentos para outro navegador.</p></div>
       <footer className="dialog-actions"><button className="button secondary" onClick={close}>Fechar</button><button className="button primary" onClick={exportLibrary}>Baixar cópia</button></footer>
+    </Dialog>}
+    {dialog?.type === 'motion' && <Dialog title="Animações" close={close}>
+      <label className="form-label">Movimento na interface
+        <select value={motion} onChange={(event) => changeMotion(event.target.value)} data-autofocus>
+          <option value="system">Seguir o dispositivo</option>
+          <option value="full">Animações completas</option>
+          <option value="reduced">Movimento reduzido</option>
+        </select>
+      </label>
+      <p className="dialog-copy">A preferência vale para o Linha Clara neste navegador.</p>
+      <footer className="dialog-actions"><button className="button primary" onClick={close}>Concluir</button></footer>
     </Dialog>}
   </>
 }

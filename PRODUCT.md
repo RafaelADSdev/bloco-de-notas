@@ -26,4 +26,4 @@ O produto se chama Linha Clara. A interface está em português do Brasil.
 
 ## Accessibility & Inclusion
 
-Os fluxos principais atendem desktop, tablet e celular. A interface segue a preferência de movimento reduzido do dispositivo.
+Os fluxos principais atendem desktop, tablet e celular. A interface segue a preferência de movimento reduzido do dispositivo por padrão. A biblioteca permite ajustar as animações para este navegador.

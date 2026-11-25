@@ -8,10 +8,23 @@
     <link rel="icon" type="image/png" href="/linha-clara.png" />
     <title>Linha Clara · Biblioteca de anotações</title>
     <script>
+      const entryUrl = new URL(location.href)
+      const enableMotion = entryUrl.searchParams.get('motion') === 'full'
+      if (enableMotion) {
+        document.documentElement.dataset.motion = 'full'
+        entryUrl.searchParams.delete('motion')
+        history.replaceState(history.state, '', entryUrl)
+      }
       try {
         if (localStorage.getItem('linha-clara:theme') === 'light') {
           document.documentElement.dataset.theme = 'light'
           document.querySelector('meta[name="theme-color"]').content = '#f6f0e6'
+        }
+        if (enableMotion) {
+          localStorage.setItem('linha-clara:motion', 'full')
+        } else {
+          const motion = localStorage.getItem('linha-clara:motion')
+          if (motion === 'full' || motion === 'reduced') document.documentElement.dataset.motion = motion
         }
       } catch {}
     </script>

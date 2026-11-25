@@ -1,0 +1,120 @@
+:root {
+  --motion-distance: 1;
+  --motion-long-ease: cubic-bezier(.16, 1, .3, 1);
+}
+
+:root[data-motion='reduced'] {
+  --motion-off: none;
+  --motion-distance: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) {
+    --motion-off: none;
+    --motion-distance: 0;
+  }
+}
+
+.button, .icon-button, .item-card, .sidebar nav button, .studio-gallery-button {
+  transition: var(--motion-off, color 150ms var(--ease-out), background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out), scale 140ms var(--ease-out));
+}
+.button:active:not(:disabled), .icon-button:active:not(:disabled), .studio-gallery-button:active:not(:disabled) {
+  scale: calc(1 - .035 * var(--motion-distance));
+}
+.welcome-open svg:last-child, .local-chevron {
+  transition: var(--motion-off, translate 190ms var(--ease-out));
+}
+
+@media (hover: hover) {
+  .welcome-open:hover svg:last-child, .local-card:hover .local-chevron {
+    translate: calc(4px * var(--motion-distance)) 0;
+  }
+  .cover-object {
+    transition: var(--motion-off, translate 280ms var(--motion-long-ease), rotate 280ms var(--motion-long-ease));
+  }
+  .item-open:hover .cover-object {
+    translate: 0 calc(-7px * var(--motion-distance));
+    rotate: calc(-2deg * var(--motion-distance));
+  }
+  .item-open:active .cover-object {
+    translate: 0 calc(-2px * var(--motion-distance));
+  }
+}
+
+.welcome-visual { position: relative; overflow: hidden; }
+.welcome-visual img { animation: var(--motion-off, paper-expose 680ms var(--motion-long-ease) 40ms backwards); }
+.welcome-visual::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(115deg, transparent 30%, #ffd49e45 49%, transparent 68%);
+  animation: var(--motion-off, light-pass 760ms var(--ease-out) 110ms);
+}
+.welcome-workspace h1 { animation: var(--motion-off, intro-in 520ms var(--motion-long-ease) backwards); }
+.welcome-description { animation: var(--motion-off, intro-in 410ms var(--motion-long-ease) 55ms backwards); }
+.welcome-open, .welcome-actions { animation: var(--motion-off, intro-in 330ms var(--motion-long-ease) 95ms backwards); }
+.welcome-storage { animation: var(--motion-off, soft-in 330ms var(--ease-out) 150ms backwards); }
+
+.heading-row, .editor-header .editor-nav, .studio-header .studio-brand {
+  animation: var(--motion-off, workspace-in 270ms var(--motion-long-ease) backwards);
+}
+.library-controls, .section-heading, .empty-state,
+.editor-tools, .editor-footer, .studio-header-actions, .studio-toolbar, .studio-context {
+  animation: var(--motion-off, soft-in 220ms var(--ease-out) backwards);
+}
+.item-grid > .item-card:nth-child(-n+8) {
+  animation: var(--motion-off, card-in 300ms var(--motion-long-ease) var(--card-delay, 0ms) backwards);
+}
+.item-list > .item-card:nth-child(-n+8) {
+  animation: var(--motion-off, row-in 245ms var(--motion-long-ease) var(--card-delay, 0ms) backwards);
+}
+.item-card:nth-child(2) { --card-delay: 25ms; }
+.item-card:nth-child(3) { --card-delay: 50ms; }
+.item-card:nth-child(4) { --card-delay: 75ms; }
+.item-card:nth-child(n+5) { --card-delay: 100ms; }
+
+@media screen {
+  .page-surface, .text-paper, .studio-sheet {
+    animation: var(--motion-off, sheet-in 240ms var(--ease-out) backwards);
+  }
+}
+
+.sidebar.sidebar-open, .page-sidebar {
+  animation: var(--motion-off, reveal-left 235ms var(--motion-long-ease) backwards);
+}
+.sidebar-scrim, .studio-scrim, .dialog[open]::backdrop {
+  animation: var(--motion-off, backdrop-in 180ms var(--ease-out) backwards);
+}
+.popover { animation: var(--motion-off, popover-in 180ms var(--motion-long-ease) backwards); }
+.dialog[open] { animation: var(--motion-off, dialog-in 255ms var(--motion-long-ease) backwards); }
+.toast, .status-float { animation: var(--motion-off, reveal-right 240ms var(--motion-long-ease) backwards); }
+.studio-storage[data-status='confirmed'] { animation: var(--motion-off, workspace-in 220ms var(--motion-long-ease) backwards); }
+
+@media (max-width: 760px) {
+  .studio-brushes.mobile-open { animation: var(--motion-off, reveal-left 235ms var(--motion-long-ease) backwards); }
+  .studio-layers.mobile-open { animation: var(--motion-off, reveal-right 235ms var(--motion-long-ease) backwards); }
+}
+
+@keyframes paper-expose {
+  from { opacity: .42; scale: 1.042; clip-path: inset(0 0 0 13%); }
+  to { opacity: 1; scale: 1; clip-path: inset(0); }
+}
+@keyframes light-pass {
+  from { opacity: 0; translate: -70% 0; }
+  34% { opacity: 1; }
+  to { opacity: 0; translate: 62% 0; }
+}
+@keyframes intro-in { from { opacity: .3; translate: 0 14px; } }
+@keyframes workspace-in { from { opacity: .48; translate: 0 8px; } }
+@keyframes soft-in { from { opacity: .64; } }
+@keyframes card-in { from { opacity: .55; translate: 0 9px; } }
+@keyframes row-in { from { opacity: .58; translate: -8px 0; } }
+@keyframes sheet-in { from { opacity: .76; } }
+@keyframes reveal-left { from { opacity: .6; translate: -15px 0; } }
+@keyframes reveal-right { from { opacity: .5; translate: 14px 0; } }
+@keyframes backdrop-in { from { opacity: 0; } }
+@keyframes popover-in { from { opacity: .4; scale: .96; } }
+@keyframes dialog-in { from { opacity: .5; translate: 0 10px; scale: .98; } }

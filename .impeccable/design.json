@@ -635,33 +635,38 @@
       },
       {
         "name": "control-state",
-        "value": "140ms",
-        "purpose": "Mudança de cor, fundo e borda em controles e cartões."
-      },
-      {
-        "name": "panel-in",
         "value": "150ms",
-        "purpose": "Entrada de menu, diálogo, notificação e painel móvel do estúdio."
+        "purpose": "Mudança de cor, fundo e borda em controles e cartões. Pressionar um controle usa 140 ms."
       },
       {
-        "name": "nav-in",
-        "value": "160ms",
-        "purpose": "Entrada de gaveta lateral da biblioteca e do painel de páginas no celular."
+        "name": "popover-in",
+        "value": "180ms",
+        "purpose": "Entrada de um menu a partir do controle que o abriu."
+      },
+      {
+        "name": "drawer-in",
+        "value": "235ms",
+        "purpose": "Entrada da navegação móvel, das páginas e dos painéis do estúdio."
+      },
+      {
+        "name": "dialog-in",
+        "value": "255ms",
+        "purpose": "Entrada de um diálogo com mudança de opacidade e deslocamento curto."
       },
       {
         "name": "workspace-in",
-        "value": "205ms",
+        "value": "270ms",
         "purpose": "Aparecimento do cabeçalho da biblioteca, do editor e do estúdio."
       },
       {
-        "name": "welcome-reveal",
-        "value": "380ms",
-        "purpose": "Revelação curta da fotografia da abertura."
+        "name": "paper-expose",
+        "value": "680ms",
+        "purpose": "Revelação da fotografia da abertura acompanhada por uma passagem de luz."
       },
       {
         "name": "allow-motion",
-        "value": "(prefers-reduced-motion: no-preference)",
-        "purpose": "Condição para as transições e animações descritas."
+        "value": "Seguir o dispositivo, Animações completas ou Movimento reduzido",
+        "purpose": "A preferência do dispositivo é o padrão. A biblioteca guarda a escolha local."
       }
     ],
     "breakpoints": [
