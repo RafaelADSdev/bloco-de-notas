@@ -15,14 +15,14 @@
 
 ## Baixe o Linha Clara
 
-Abra a [prévia multiplataforma 1.0.4](https://github.com/RafaelADSdev/bloco-de-notas/releases/tag/v1.0.4-multiplataforma) e escolha um arquivo em **Assets**.
+Abra a [prévia multiplataforma 1.0.5](https://github.com/RafaelADSdev/bloco-de-notas/releases/tag/v1.0.5-multiplataforma) e escolha um arquivo em **Assets**.
 
 | Plataforma | Arquivo | Instalação |
 | --- | --- | --- |
-| Windows de 64 bits | `Linha-Clara-1.0.4-windows-x64.exe` | Execute o instalador. O EXE desta prévia é distribuído sem assinatura Authenticode. |
-| macOS 13 ou posterior, Apple Silicon | `Linha-Clara-1.0.4-macos-arm64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
-| macOS 13 ou posterior, Intel | `Linha-Clara-1.0.4-macos-x86_64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
-| Android 7.0 ou posterior | `Linha-Clara-1.0.4-android.apk` | Abra o APK no aparelho e siga as instruções de instalação. |
+| Windows de 64 bits | `Linha-Clara-1.0.5-windows-x64.exe` | Execute o instalador. O EXE desta prévia é distribuído sem assinatura Authenticode. |
+| macOS 13 ou posterior, Apple Silicon | `Linha-Clara-1.0.5-macos-arm64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
+| macOS 13 ou posterior, Intel | `Linha-Clara-1.0.5-macos-x86_64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
+| Android 7.0 ou posterior | `Linha-Clara-1.0.5-android.apk` | Abra o APK no aparelho e siga as instruções de instalação. |
 
 O APK usa uma assinatura de teste. Os apps para macOS têm assinatura *ad hoc* e são distribuídos sem notarização da Apple.
 
@@ -31,7 +31,7 @@ O APK usa uma assinatura de teste. Os apps para macOS têm assinatura *ad hoc* e
 - **Organizar a biblioteca.** Crie cadernos, notas de texto, quadros e pastas. Encontre documentos pela busca ou pelo tipo de arquivo e alterne entre grade e lista.
 - **Usar no Android.** O app abre direto na biblioteca, com atalhos para Desenhos, Favoritos e Ajustes. Ao girar o celular, os controles dos editores passam para as laterais para liberar altura.
 - **Escrever e anotar.** Escolha papel pautado, quadriculado, pontilhado ou em branco. Escreva à mão, marque trechos de um PDF e adicione textos, figuras ou gravações de áudio aos documentos.
-- **Desenhar em camadas.** Abra **Meus desenhos** pela biblioteca ou pelo estúdio. Use pincéis com carimbo, respingos e esfuminho, estabilização, guias de perspectiva e simetria ajustável. O estúdio também oferece máscaras de recorte, bloqueio de transparência, ajustes de cor e timelapse.
+- **Desenhar em camadas.** Acesse **Meus desenhos** pela biblioteca. No estúdio, escolha um pincel na barra ilustrada e abra cor, guias ou camadas quando precisar. Use carimbo, respingos, esfuminho, simetria, máscaras de recorte e timelapse.
 - **Exportar um desenho.** Baixe PNG, PNG transparente, JPEG, PDF ou PSD raster em camadas pelo menu do estúdio. Use o projeto editável do Linha Clara para guardar camadas, traços e imagens e reabra a cópia em **Meus desenhos**.
 - **Levar uma cópia.** Importe PDF, TXT ou uma cópia JSON do Linha Clara. Exporte um documento em PDF ou baixe a biblioteca em um arquivo JSON editável.
 
@@ -46,7 +46,7 @@ Os temas **Claro** e **Escuro** preservam as cores do papel e da tinta. No Andro
 
 ![Editor de texto com uma nota de leitura aberta em uma folha clara.](docs/media/editor.webp)
 
-![Estúdio de desenho com Novo desenho e Salvar na barra superior, pincéis à esquerda e camadas à direita.](docs/media/estudio.webp)
+![Estúdio de desenho para computador, com a folha ao centro, pincéis ilustrados à esquerda e controles de visualização à direita.](docs/media/estudio.webp)
 
 <p align="center">
   <img src="docs/media/celular.webp" width="360" alt="Biblioteca no Android com capas de cadernos, botão Novo e navegação inferior." />

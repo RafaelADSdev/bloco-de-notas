@@ -296,38 +296,27 @@
 [data-platform='android'] .android-text-extra { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 [data-platform='android'] .android-text-extra .icon-button { width: 44px; height: 44px; }
 
-:root[data-platform='android'] .studio-app { background: var(--canvas); }
 :root[data-platform='android'] .studio-touch-header {
   padding: calc(var(--app-top) + 3px) calc(var(--app-right) + 7px) 3px calc(var(--app-left) + 7px);
-  background: var(--surface);
-  border-color: var(--line);
-  color: var(--ink);
 }
-:root[data-platform='android'] .studio-touch-header .icon-button { color: var(--ink); border-radius: 13px; }
-:root[data-platform='android'] .studio-touch-header .icon-button[aria-pressed='true'] { background: var(--accent-tint); color: var(--accent); }
-:root[data-platform='android'] .studio-touch-header .studio-touch-save { color: var(--accent); }
-:root[data-platform='android'] .studio-touch-document .studio-storage { color: var(--muted); }
-:root[data-platform='android'] .studio-touch-document .studio-storage[data-status='confirmed'] { color: var(--success); }
-:root[data-platform='android'] .studio-touch-document .studio-storage[data-status='error'],
-:root[data-platform='android'] .studio-touch-document .studio-storage[data-status='recording'] { color: var(--danger); }
+:root[data-platform='android'] .studio-touch-header .icon-button { border-radius: 13px; }
 :root[data-platform='android'] .studio-touch-tools { border-radius: 16px; }
 :root[data-platform='android'] .studio-touch-tools .icon-button { border-radius: 11px; }
-:root[data-platform='android'] .studio-layout-compact { background: var(--studio-mobile-mat); }
 :root[data-platform='android'] .studio-brush-rail {
   left: calc(var(--app-left) + 6px);
   border-radius: 13px;
 }
-:root[data-platform='android'] .studio-workspace-compact { margin-inline: var(--app-left) var(--app-right); }
-:root[data-platform='android'] .studio-workspace-compact .studio-viewbar { border-radius: 13px; }
-:root[data-platform='android'] .studio-layout-compact.is-focused .studio-viewport { margin-block: 0 var(--app-bottom); }
+:root[data-platform='android'] .studio-workspace { margin-inline: var(--app-left) var(--app-right); }
+:root[data-platform='android'] .studio-workspace .studio-viewbar { border-radius: 13px; }
+:root[data-platform='android'] .studio-layout.is-focused .studio-viewport { margin-block: 0 var(--app-bottom); }
 
 @media (orientation: portrait), (max-width: 479px) {
   :root[data-platform='android'] .studio-touch-tools {
     top: auto;
     bottom: calc(8px + var(--app-bottom));
   }
-  :root[data-platform='android'] .studio-workspace-compact .studio-viewport { margin-block: 54px calc(65px + var(--app-bottom)); }
-  :root[data-platform='android'] .studio-workspace-compact .studio-viewbar { top: 6px; bottom: auto; }
+  :root[data-platform='android'] .studio-workspace .studio-viewport { margin-block: 54px calc(65px + var(--app-bottom)); }
+  :root[data-platform='android'] .studio-workspace .studio-viewbar { top: 6px; bottom: auto; }
   :root[data-platform='android'] .studio-touch-panel.dialog {
     inset: auto 0 0;
     margin: 0 auto;
@@ -393,12 +382,12 @@
   [data-platform='android'] .text-paper { padding-bottom: calc(var(--app-bottom) + 20px); }
   :root[data-platform='android'] .studio-touch-tools { left: calc(var(--app-left) + 5px); }
   :root[data-platform='android'] .studio-brush-rail { left: calc(var(--app-left) + 58px); }
-  :root[data-platform='android'] .studio-workspace-compact {
+  :root[data-platform='android'] .studio-workspace {
     margin-inline: calc(var(--app-left) + 108px) calc(var(--app-right) + 55px);
     margin-bottom: var(--app-bottom);
   }
-  :root[data-platform='android'] .studio-workspace-compact .studio-viewbar { right: calc(var(--app-right) + 5px); }
-  :root[data-platform='android'] .studio-layout-compact.is-focused .studio-workspace-compact { margin-inline: var(--app-left) var(--app-right); margin-bottom: 0; }
+  :root[data-platform='android'] .studio-workspace .studio-viewbar { right: calc(var(--app-right) + 5px); }
+  :root[data-platform='android'] .studio-layout.is-focused .studio-workspace { margin-inline: var(--app-left) var(--app-right); margin-bottom: 0; }
   :root[data-platform='android'] .studio-touch-panel.dialog {
     margin: auto calc(var(--app-right) + 8px) auto 0;
     max-height: calc(100dvh - var(--app-top) - var(--app-bottom) - 16px);

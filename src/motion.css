@@ -15,11 +15,11 @@
   }
 }
 
-.button, .icon-button, .item-card, .sidebar nav button, .studio-gallery-button {
+.button, .icon-button, .item-card, .sidebar nav button {
   transition: var(--motion-off, color 150ms var(--ease-out), background-color 150ms var(--ease-out),
     border-color 150ms var(--ease-out), scale 140ms var(--ease-out));
 }
-.button:active:not(:disabled), .icon-button:active:not(:disabled), .studio-gallery-button:active:not(:disabled) {
+.button:active:not(:disabled), .icon-button:active:not(:disabled) {
   scale: calc(1 - .035 * var(--motion-distance));
 }
 .welcome-open svg:last-child, .local-chevron {
@@ -58,11 +58,11 @@
 .welcome-open, .welcome-actions { animation: var(--motion-off, intro-in 330ms var(--motion-long-ease) 95ms backwards); }
 .welcome-storage { animation: var(--motion-off, soft-in 330ms var(--ease-out) 150ms backwards); }
 
-.heading-row, .editor-header .editor-nav, .studio-header .studio-brand {
+.heading-row, .editor-header .editor-nav {
   animation: var(--motion-off, workspace-in 270ms var(--motion-long-ease) backwards);
 }
 .library-controls, .section-heading, .empty-state,
-.editor-tools, .editor-footer, .studio-header-actions, .studio-toolbar, .studio-context {
+.editor-tools, .editor-footer {
   animation: var(--motion-off, soft-in 220ms var(--ease-out) backwards);
 }
 .item-grid > .item-card:nth-child(-n+8) {

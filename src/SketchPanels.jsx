@@ -1,26 +1,19 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import {
   ArrowDown, ArrowUp, Blend, Check, ClipboardPaste, Copy, Crop, Droplet, Eraser, Eye, EyeOff, FlipHorizontal2,
-  Grid2X2, Hand, Lasso, Layers3, Lock, Maximize, Minimize, Minus, MoreHorizontal, PaintBucket,
-  Paintbrush, Pencil, Pipette, Plus, Redo2, RotateCw, Scan, Scissors, Square, Trash2, Type, Undo2, Unlock, X, Circle,
+  Hand, Lasso, Layers3, Lock, Maximize, Minimize, Minus, MoreHorizontal, PaintBucket,
+  Pencil, Pipette, RotateCw, Scan, Scissors, Square, Trash2, Type, Unlock, X, Circle,
 } from 'lucide-react'
 import { IconButton, Menu, MenuOption } from './ui'
 import { SketchBrushPresets } from './SketchBrushPresets'
 import { blends, brushes, canMergeDown, drawingFrame, layerLabels, palettes, shapes } from './sketch-model'
 
-const toolGroups = [
-  ['Navegação e seleção', [
-    ['hand', 'Mover tela', Hand, 'H'], ['select', 'Seleção retangular', Scan, 'M'], ['lasso', 'Laço', Lasso, 'L'],
-  ]],
-  ['Preenchimento, cor e texto', [
-    ['fill', 'Balde de tinta', PaintBucket, 'G'], ['gradient', 'Degradê', Blend], ['area-fill', 'Laço preenchido', Lasso],
-    ['sample', 'Conta-gotas', Pipette, 'I'], ['text', 'Texto', Type, 'T'],
-  ]],
-  ['Formas e borracha', [
-    ['line', 'Linha', Minus], ['rectangle', 'Retângulo', Square], ['ellipse', 'Elipse', Circle], ['erase', 'Borracha', Eraser, 'E'],
-  ]],
+export const tools = [
+  ['hand', 'Mover tela', Hand, 'H'], ['select', 'Seleção retangular', Scan, 'M'], ['lasso', 'Laço', Lasso, 'L'],
+  ['fill', 'Balde de tinta', PaintBucket, 'G'], ['gradient', 'Degradê', Blend], ['area-fill', 'Laço preenchido', Lasso],
+  ['sample', 'Conta-gotas', Pipette, 'I'], ['text', 'Texto', Type, 'T'], ['line', 'Linha', Minus],
+  ['rectangle', 'Retângulo', Square], ['ellipse', 'Elipse', Circle], ['erase', 'Borracha', Eraser, 'E'],
 ]
-export const tools = toolGroups.flatMap(([, entries]) => entries)
 const symmetryOptions = [['none', 'Nenhuma'], ['vertical', 'Vertical'], ['horizontal', 'Horizontal'], ['both', '4 lados'], ['free', 'Livre'], ['radial', 'Radial']]
 const guideOptions = [['none', 'Nenhuma'], ['grid', 'Grade'], ['ruler', 'Régua'], ['ellipse', 'Elipse'],
   ['perspective', '1 ponto'], ['perspective2', '2 pontos'], ['perspective3', '3 pontos']]
@@ -33,21 +26,7 @@ function ViewOptions({ label, options, value, change }) {
   </div>
 }
 
-export function SketchToolbar({ tool, setTool, history, undo, redo }) {
-  return <div className="studio-toolbar" aria-label="Ferramentas do estúdio">
-    <div className="studio-toolbar-group">
-      <IconButton label="Desfazer" title="Desfazer (Ctrl+Z)" disabled={!history.past.length} onClick={undo}><Undo2 size={19} /></IconButton>
-      <IconButton label="Refazer" title="Refazer (Ctrl+Shift+Z)" disabled={!history.future.length} onClick={redo}><Redo2 size={19} /></IconButton>
-    </div>
-    {toolGroups.map(([name, entries]) =>
-      <div className="studio-toolbar-group" role="group" aria-label={name} key={name}>
-        {entries.map(([key, label, Icon, short]) => <IconButton key={key} label={label} title={short ? `${label} (${short})` : label}
-          aria-pressed={tool === key} onClick={() => setTool(key)}><Icon size={19} /></IconButton>)}
-      </div>)}
-  </div>
-}
-
-export function SketchContext({ tool, settings, change, selection, editable, editRegion, paintSelection, clearSelection, crop, copy, paste, position, canCopy, canPaste, compact = false }) {
+export function SketchContext({ tool, settings, change, selection, editable, editRegion, paintSelection, clearSelection, crop, copy, paste, position, canCopy, canPaste }) {
   const label = brushes[tool]?.label ?? tools.find(([key]) => key === tool)?.[1]
   const adjustingGuide = settings.guide !== 'none' && settings.guide !== 'grid'
   const adjustingSymmetry = settings.symmetry !== 'none'
@@ -79,22 +58,11 @@ export function SketchContext({ tool, settings, change, selection, editable, edi
         <Range label="Repetições da simetria" value={settings.symmetryCount} change={(value) => change('symmetryCount', value)} min={2} max={16} />}
     </div>}
   </>
-  return <div className={'studio-context' + (compact ? ' studio-context-compact' : '')}>
+  return <div className="studio-context">
     <strong className="studio-current" title={label}>{label}</strong>
     <div className="studio-context-controls">
-      {compact ? <>
-        <ViewOptions label="Simetria" options={symmetryOptions} value={settings.symmetry} change={(value) => change('symmetry', value)} />
-        <ViewOptions label="Guias" options={guideOptions} value={settings.guide} change={(value) => change('guide', value)} />
-      </> : <><label><span>Simetria</span><select value={settings.symmetry} onChange={(event) => change('symmetry', event.target.value)}>
-        <option value="none">Sem simetria</option><option value="vertical">Vertical</option>
-        <option value="horizontal">Horizontal</option><option value="both">Quatro lados</option><option value="free">Eixo livre</option><option value="radial">Radial</option>
-      </select></label>
-      <label><Grid2X2 size={14} /><span>Guias</span><select value={settings.guide} onChange={(event) => change('guide', event.target.value)}>
-        <option value="none">Sem guia</option><option value="grid">Grade</option>
-        <option value="ruler">Régua</option><option value="ellipse">Guia elíptica</option>
-        <option value="perspective">Perspectiva de 1 ponto</option><option value="perspective2">Perspectiva de 2 pontos</option>
-        <option value="perspective3">Perspectiva de 3 pontos</option>
-      </select></label></>}
+      <ViewOptions label="Simetria" options={symmetryOptions} value={settings.symmetry} change={(value) => change('symmetry', value)} />
+      <ViewOptions label="Guias" options={guideOptions} value={settings.guide} change={(value) => change('guide', value)} />
       {shapes.has(tool) && tool !== 'line' && <label className="studio-check">
         <input type="checkbox" checked={settings.filled} onChange={(event) => change('filled', event.target.checked)} /> Forma preenchida
       </label>}
@@ -126,9 +94,7 @@ export function SketchContext({ tool, settings, change, selection, editable, edi
         <MenuOption icon={Square} disabled={!selection || !editable} onClick={() => paintSelection('area-outline')}>Contornar seleção</MenuOption>
       </Menu>
     </div>}
-    {(adjustingGuide || adjustingSymmetry) && (compact
-      ? <details className="studio-precision"><summary>Ajustar posição e ângulo</summary>{precision}</details>
-      : <Menu label="Ajustar guias e simetria" trigger={(props) => <IconButton {...props} label="Ajustar guias e simetria"><Grid2X2 size={16} /></IconButton>}>{precision}</Menu>)}
+    {(adjustingGuide || adjustingSymmetry) && <details className="studio-precision"><summary>Ajustar posição e ângulo</summary>{precision}</details>}
   </div>
 }
 
@@ -151,24 +117,16 @@ export function BrushTip({ brush }) {
   return <span className={'studio-brush-tip tip-' + brush} aria-hidden="true"><i /></span>
 }
 
-export function BrushPanel({ tool, setTool, settings, change, changeBrush, recent, openColor, usePreset, compact = false }) {
+export function BrushPanel({ tool, setTool, settings, change, changeBrush, usePreset }) {
   const hasSize = Boolean(brushes[tool]) || shapes.has(tool)
   const canPaint = hasSize || ['fill', 'gradient', 'area-fill'].includes(tool)
   return <aside className="studio-panel studio-brushes" aria-label="Paleta de pincéis">
-    {!compact && <div className="studio-panel-head"><h2><Paintbrush size={17} /> Pincéis</h2></div>}
     <div className="studio-brush-grid">
       {Object.entries(brushes).map(([key, brush]) => <button key={key} type="button" aria-pressed={tool === key} onClick={() => setTool(key)}>
-        {compact ? <BrushTip brush={key} /> : <span aria-hidden="true" className={`studio-brush-mark mark-${key}`} />}{brush.label}
+        <BrushTip brush={key} />{brush.label}
       </button>)}
     </div>
-    <section className="studio-panel-section" aria-label={compact ? 'Ajustes do pincel' : 'Cor e ajustes'}>
-      {!compact && <><div className="studio-section-title">
-        <h3><Droplet size={14} /> Cor</h3>
-        <label className="studio-color"><span>{settings.color.toUpperCase()}</span>
-          <input type="color" aria-label="Cor personalizada" value={settings.color} onChange={(event) => change('color', event.target.value)} />
-        </label>
-      </div><ColorSwatches color={settings.color} recent={recent} change={change} />
-      <button type="button" className="button secondary studio-open-color" onClick={openColor}>Editar cores</button></>}
+    <section className="studio-panel-section" aria-label="Ajustes do pincel">
       {hasSize && <Range label="Tamanho" value={settings.size} change={(value) => changeBrush('size', value)} unit=" px" max={160} />}
       {canPaint && <Range label="Opacidade do traço" value={settings.opacity} change={(value) => changeBrush('opacity', value)} unit="%" />}
       {brushes[tool] && <>
@@ -221,15 +179,12 @@ function LayerOpacity({ layer, preview, commit }) {
   </label>
 }
 
-export function LayerPanel({ drawing, active, select, renderer, imageVersion, add, update, layerAction, modify, preview, compact = false }) {
+export function LayerPanel({ drawing, active, select, renderer, imageVersion, update, layerAction, modify, preview }) {
   const frame = drawingFrame(drawing)
   const activeIndex = drawing.layers.indexOf(active)
   const visibleLayers = drawing.layers.filter((layer) => layer.visible)
   const canMergeVisible = visibleLayers.length > 1 && visibleLayers.every((layer) => !layer.locked)
   return <aside className="studio-panel studio-layers" aria-label="Camadas">
-    {!compact && <div className="studio-panel-head">
-      <h2><Layers3 size={17} /> Camadas</h2><IconButton label="Adicionar camada" onClick={add}><Plus size={19} /></IconButton>
-    </div>}
     <ul className="studio-layer-list">
       {[...drawing.layers].reverse().map((layer, index) => <li key={layer.id} className={layer.id === active.id ? 'active' : ''} data-layer-color={layer.colorLabel}>
         <button className="studio-layer-select" aria-pressed={layer.id === active.id} onClick={() => select(layer.id)}>
@@ -256,7 +211,7 @@ export function LayerPanel({ drawing, active, select, renderer, imageVersion, ad
       </li>)}
     </ul>
     <section className="studio-panel-section studio-layer-settings" aria-label="Ajustes da camada ativa">
-      {compact && <div className="studio-layer-tools" role="group" aria-label="Comandos da camada ativa">
+      <div className="studio-layer-tools" role="group" aria-label="Comandos da camada ativa">
         <button type="button" onClick={() => modify('rename', active)}><Pencil size={18} />Renomear</button>
         <button type="button" onClick={() => layerAction('copy', active.id)}><Copy size={18} />Duplicar</button>
         <button type="button" onClick={() => update(active.id, { locked: !active.locked })}>
@@ -265,7 +220,7 @@ export function LayerPanel({ drawing, active, select, renderer, imageVersion, ad
         <button type="button" disabled={activeIndex === drawing.layers.length - 1} onClick={() => layerAction('up', active.id)}><ArrowUp size={18} />Subir</button>
         <button type="button" disabled={activeIndex === 0} onClick={() => layerAction('down', active.id)}><ArrowDown size={18} />Descer</button>
         <button type="button" disabled={active.locked || drawing.layers.length === 1} onClick={() => layerAction('remove', active.id)}><Trash2 size={18} />Excluir</button>
-      </div>}
+      </div>
       <label className="studio-select"><span>Modo de mesclagem</span><select value={active.blend} onChange={(event) => update(active.id, { blend: event.target.value })}>
         {Object.entries(blends).map(([key, label]) => <option value={key} key={key}>{label}</option>)}
       </select></label>

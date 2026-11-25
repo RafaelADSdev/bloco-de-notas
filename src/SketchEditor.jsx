@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, Download, Expand, FileUp, ImagePlus, Images, Minimize2, MoreHorizontal, Pencil, Plus, Save, Square, Video } from 'lucide-react'
+import { ArrowLeft, Download, Expand, FileUp, ImagePlus, Minimize2, MoreHorizontal, Pencil, Plus, Save, Square, Video } from 'lucide-react'
 import { Dialog, IconButton, Menu, MenuOption } from './ui'
 import { SketchCanvas } from './SketchCanvas'
 import { DrawingHelp, DrawingNameForm, DrawingTextForm, LayerColorForm } from './SketchDialogs'
-import { BrushPanel, LayerPanel, SketchContext, SketchToolbar, tools } from './SketchPanels'
-import { SketchBrushRail, SketchColorPicker, SketchMobileToolbar, SketchMobileTools, useCompactStudio } from './SketchMobile'
+import { BrushPanel, LayerPanel, SketchContext, tools } from './SketchPanels'
+import { SketchBrushRail, SketchColorPicker, SketchToolDock, SketchToolGrid } from './SketchMobile'
 import { bounds, brushes, canMergeDown, clamp, drawingFrame, editHistory, newLayer, numberedLayer, paper, shapes, transformPoints, updateLayer } from './sketch-model'
 import { bitmap, captureRegion, encode, imageLayer } from './sketch-raster'
 import { studioRenderer } from './sketch-render'
@@ -12,16 +12,16 @@ import { fileName, saveFile } from './model'
 import { useSketchRecording } from './useSketchRecording'
 import { isAndroidApp } from './android-platform'
 
+const localApp = isAndroidApp || window.location.protocol === 'linhaclara:'
 const storageLabels = {
-  saved: isAndroidApp ? 'Salvo no dispositivo' : 'Salvo neste navegador',
-  confirmed: isAndroidApp ? 'Desenho salvo no dispositivo' : 'Desenho salvo neste navegador',
+  saved: localApp ? 'Salvo no dispositivo' : 'Salvo neste navegador',
+  confirmed: localApp ? 'Desenho salvo no dispositivo' : 'Desenho salvo neste navegador',
   saving: 'Salvando…',
   error: 'Não foi possível salvar as alterações',
 }
 const panelTitles = { brushes: 'Pincéis', color: 'Cor do traço', layers: 'Camadas', tools: 'Ferramentas e guias' }
 
 export function SketchEditor({ initial, leave, save, storage, newDrawing, gallery, clipboard, externalDialog, importDrawing }) {
-  const compact = useCompactStudio()
   const [history, edit] = useReducer(editHistory, { drawing: initial, past: [], future: [] })
   const { drawing } = history
   const [tool, setTool] = useState('pencil')
@@ -83,7 +83,7 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
   }
 
   function useBrushPreset({ tool: key, options: preset }) {
-    chooseTool(key, compact)
+    chooseTool(key, true)
     const { smoothing, stabilizer, prediction, pressure, ...brush } = preset
     setBrushOptions((previous) => ({ ...previous, [key]: brush }))
     setOptions((previous) => ({
@@ -292,7 +292,7 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
       window.removeEventListener('blur', blur)
     }
   })
-  useEffect(() => { if (!compact || externalDialog) setPanel(null) }, [compact, externalDialog])
+  useEffect(() => { if (externalDialog) setPanel(null) }, [externalDialog])
 
   async function importImage(event) {
     const file = event.target.files?.[0]
@@ -398,14 +398,14 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
   const saveNow = () => save(drawing, true)
   const toggleFocus = () => { setFocused(!focused); closePanel() }
   const rename = () => setDialog({ type: 'rename' })
-  const brushPanel = <BrushPanel tool={tool} setTool={(key) => chooseTool(key, compact)} settings={settings} recent={recent}
-    change={option} changeBrush={changeBrush} openColor={() => setPanel('color')} usePreset={useBrushPreset} compact={compact} />
-  const layerPanel = <LayerPanel drawing={drawing} active={active} select={select} renderer={renderer} imageVersion={imageVersion} compact={compact}
-    add={addLayer} update={update} layerAction={layerAction} preview={setAlpha}
+  const brushPanel = <BrushPanel tool={tool} setTool={(key) => chooseTool(key, true)} settings={settings}
+    change={option} changeBrush={changeBrush} usePreset={useBrushPreset} />
+  const layerPanel = <LayerPanel drawing={drawing} active={active} select={select} renderer={renderer} imageVersion={imageVersion}
+    update={update} layerAction={layerAction} preview={setAlpha}
     modify={(type, layer) => { closePanel(); setDialog({ type: 'layer-' + type, layer: layer.id }) }} />
   const context = <SketchContext tool={tool} settings={settings} change={option} selection={selection} editable={editable} editRegion={editRegion}
     paintSelection={paintSelection} clearSelection={() => setSelection(null)} crop={crop} copy={copy} paste={paste} canPaste={canPaste}
-    position={(target) => { setPositionTarget(target); closePanel() }} canCopy={Boolean(selection && active.visible)} compact={compact} />
+    position={(target) => { setPositionTarget(target); closePanel() }} canCopy={Boolean(selection && active.visible)} />
   const documentOptions = <>
     <MenuOption icon={Pencil} onClick={rename}>Renomear desenho</MenuOption>
     <MenuOption icon={Square} onClick={togglePaper}>{drawing.background ? 'Usar fundo transparente' : 'Usar fundo de papel'}</MenuOption>
@@ -429,75 +429,53 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
 
   return <>
     <input ref={input} type="file" hidden accept="image/*" onChange={importImage} />
-    {compact ? <header className="studio-touch-header">
+    <header className="studio-touch-header">
       <IconButton label="Meus desenhos" onClick={gallery} disabled={!canLeave}><ArrowLeft size={21} /></IconButton>
       <div className="studio-touch-document">
         <h1 title={drawing.name}>{drawing.name}</h1>
-        <span className="studio-storage" role="status" data-status={recording.recording ? 'recording' : storage}>
-          {recording.recording ? 'Gravando timelapse' : storageLabels[storage]}
-        </span>
+        <div className="studio-document-meta">
+          <span className="studio-storage" role="status" data-status={recording.recording ? 'recording' : storage}>
+            {recording.recording ? 'Gravando timelapse' : storageLabels[storage]}
+          </span>
+          <span className="studio-document-size">{frame.width} × {frame.height} px</span>
+        </div>
       </div>
-      <IconButton className="studio-touch-save" label="Salvar desenho" disabled={busy} onClick={saveNow}><Save size={19} /></IconButton>
+      <div className="studio-wide-actions">
+        <button type="button" className="button secondary" aria-label="Novo desenho" aria-haspopup="dialog" disabled={!canLeave} onClick={newDrawing}>
+          <Plus size={17} /> Novo desenho
+        </button>
+        <Menu label="Exportar desenho" trigger={(props) => <button {...props} type="button" className="button secondary" disabled={busy}>
+          <Download size={17} /> Exportar
+        </button>}>{exportOptions}</Menu>
+      </div>
+      <IconButton className="studio-touch-save" label="Salvar desenho" aria-keyshortcuts="Control+S Meta+S" disabled={busy} onClick={saveNow}><Save size={19} /></IconButton>
       {focusButton}
       <Menu label="Opções do desenho" trigger={(props) => <IconButton {...props} label="Opções do desenho" disabled={busy}><MoreHorizontal size={22} /></IconButton>}>
-        <MenuOption icon={Plus} disabled={!canLeave} onClick={newDrawing}>Novo desenho</MenuOption>
+        <div className="studio-overflow-actions"><MenuOption icon={Plus} disabled={!canLeave} onClick={newDrawing}>Novo desenho</MenuOption></div>
         {documentOptions}
         <MenuOption icon={ImagePlus} onClick={() => input.current.click()}>Importar imagem</MenuOption>
-        <hr />
-        {exportOptions}
+        <div className="studio-overflow-actions"><hr />{exportOptions}</div>
         <hr />
         <MenuOption icon={ArrowLeft} disabled={!canLeave} onClick={leave}>Voltar à biblioteca</MenuOption>
       </Menu>
-    </header> : <header className="studio-header">
-      <div className="studio-brand">
-        <button type="button" className="studio-return" aria-label="Voltar à biblioteca" onClick={leave} disabled={!canLeave}><ArrowLeft size={18} /><span>Biblioteca</span></button>
-        <h1>Estúdio de desenho</h1>
-      </div>
-      <div className="studio-document">
-        <Menu label="Opções do desenho" trigger={(props) => <button {...props} className="studio-name"><span>{drawing.name}</span><ChevronDown size={15} /></button>}>
-          {documentOptions}
-        </Menu>
-        <span className="studio-storage" role="status" data-status={recording.recording ? 'recording' : storage}>
-          {recording.recording ? 'Gravando timelapse' : storageLabels[storage]}
-        </span>
-      </div>
-      <div className="studio-header-actions">
-        <button type="button" className="button secondary studio-new" aria-label="Novo desenho" aria-haspopup="dialog" disabled={!canLeave} onClick={newDrawing}>
-          <Plus size={17} /><span>Novo<span className="studio-new-suffix"> desenho</span></span>
-        </button>
-        <button type="button" className="button primary studio-save" aria-label="Salvar desenho" aria-keyshortcuts="Control+S Meta+S" disabled={busy} onClick={saveNow}>
-          <Save size={17} />Salvar
-        </button>
-        <button type="button" className="studio-gallery-button" aria-label="Meus desenhos" title="Meus desenhos" disabled={!canLeave} onClick={gallery}><Images size={18} /><span>Desenhos</span></button>
-        <IconButton label="Importar imagem" disabled={busy} onClick={() => input.current.click()}><ImagePlus size={19} /></IconButton>
-        {focusButton}
-        <Menu label="Exportar desenho" trigger={(props) => <button {...props} type="button" title="Exportar desenho" disabled={busy} className="button secondary studio-export"><Download size={17} /><span>Exportar</span></button>}>
-          {exportOptions}
-        </Menu>
-      </div>
-    </header>}
-    {!focused && !compact && <>
-      <SketchToolbar tool={tool} setTool={chooseTool} history={history} undo={() => undoRedo('undo')} redo={() => undoRedo('redo')} />
-      {context}
-    </>}
-    <div className={'studio-layout' + (compact ? ' studio-layout-compact' : '') + (focused ? ' is-focused' : '')}>
-      {!focused && (compact ? <SketchMobileToolbar tool={tool} color={options.color} history={history}
+    </header>
+    <div className={'studio-layout' + (focused ? ' is-focused' : '')}>
+      {!focused && <SketchToolDock tool={tool} color={options.color} history={history}
         undo={() => undoRedo('undo')} redo={() => undoRedo('redo')} open={setPanel}
-        guided={Boolean(selection || settings.guide !== 'none' || settings.symmetry !== 'none')} /> : brushPanel)}
+        guided={Boolean(selection || settings.guide !== 'none' || settings.symmetry !== 'none')} />}
+      {!focused && <SketchBrushRail tool={tool} choose={chooseTool} open={() => setPanel('brushes')} />}
       <SketchCanvas drawing={renderedDrawing} active={active} tool={tool} settings={settings} renderer={renderer} imageVersion={imageVersion}
-        selection={selection} setSelection={setSelection} addOperation={addOperation} space={space} status={status} compact={compact}
+        selection={selection} setSelection={setSelection} addOperation={addOperation} space={space} status={status}
         recordFrame={recording.recordFrame}
         positionTarget={positionTarget} positionGuide={placeGuide}
         pickColor={(value) => { chooseTool(lastBrush.current); option('color', value) }}
         insertText={(point) => setDialog({ type: 'new-text', point })} showHelp={() => setDialog({ type: 'help' })} />
-      {!focused && !compact && layerPanel}
-      {!focused && compact && <SketchBrushRail tool={tool} choose={chooseTool} open={() => setPanel('brushes')} />}
     </div>
-    {panel && (compact || panel === 'color') && !externalDialog && <Dialog title={panelTitles[panel]} className={'studio-touch-panel studio-touch-panel--' + panel} close={closePanel}
+    {panel && !externalDialog && <Dialog title={panelTitles[panel]} className={'studio-touch-panel studio-touch-panel--' + panel} close={closePanel}
       headerAction={panel === 'layers' && <IconButton label="Nova camada" onClick={addLayer}><Plus size={21} /></IconButton>}>
       {panel === 'brushes' && brushPanel}
       {panel === 'layers' && layerPanel}
-      {panel === 'tools' && <>{context}<SketchMobileTools tool={tool} choose={(key) => chooseTool(key, true)} /></>}
+      {panel === 'tools' && <>{context}<SketchToolGrid tool={tool} choose={(key) => chooseTool(key, true)} /></>}
       {panel === 'color' && <SketchColorPicker color={options.color} recent={recent} sample={() => chooseTool('sample')}
         apply={(value) => { option('color', value); closePanel() }} />}
     </Dialog>}

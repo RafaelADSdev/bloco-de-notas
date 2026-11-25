@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useState } from 'react'
 import { Check, Grid2X2, ImagePlus, Layers3, Pipette, Redo2, SlidersHorizontal, Undo2 } from 'lucide-react'
 import { BrushTip, ColorSwatches, tools } from './SketchPanels'
 import { brushes, canvasSizes, clamp } from './sketch-model'
@@ -42,20 +42,11 @@ async function colorsFromImage(file) {
   }
 }
 
-function subscribe(listener) {
-  compactViewport.addEventListener('change', listener)
-  return () => compactViewport.removeEventListener('change', listener)
-}
-
-export function useCompactStudio() {
-  return useSyncExternalStore(subscribe, () => isAndroidApp || compactViewport.matches)
-}
-
 export function defaultDrawingFormat() {
   return (isAndroidApp || compactViewport.matches) && window.matchMedia('(orientation: portrait)').matches ? '900×1350' : canvasSizes[0][0]
 }
 
-export function SketchMobileToolbar({ tool, color, history, undo, redo, open, guided }) {
+export function SketchToolDock({ tool, color, history, undo, redo, open, guided }) {
   return <div className="studio-touch-tools" role="group" aria-label="Ferramentas de desenho">
     <IconButton label="Desfazer" disabled={!history.past.length} onClick={undo}><Undo2 size={20} /></IconButton>
     <IconButton label="Refazer" disabled={!history.future.length} onClick={redo}><Redo2 size={20} /></IconButton>
@@ -78,7 +69,7 @@ export function SketchBrushRail({ tool, choose, open }) {
   </div>
 }
 
-export function SketchMobileTools({ tool, choose }) {
+export function SketchToolGrid({ tool, choose }) {
   return <div className="studio-touch-tool-grid" role="group" aria-label="Escolher ferramenta">
     {tools.filter(([key]) => key !== 'erase').map(([key, label, Icon]) =>
       <button type="button" key={key} aria-pressed={tool === key} onClick={() => choose(key)}>

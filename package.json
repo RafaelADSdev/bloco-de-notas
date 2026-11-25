@@ -2,7 +2,7 @@
   "name": "linha-clara",
   "private": true,
   "description": "Cadernos, anotações em PDF e desenho em camadas.",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "scripts": {
     "build": "vite build && node scripts/static-routes.mjs",

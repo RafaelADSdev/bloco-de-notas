@@ -8,14 +8,15 @@ function rotate(x, y, angle) {
   return { x: x * cos - y * sin, y: x * sin + y * cos }
 }
 
-export function useSketchView(width, height, compact) {
+export function useSketchView(width, height) {
   const viewport = useRef(null)
   const latest = useRef(home)
   const [view, setView] = useState(home)
   const [area, setArea] = useState({ width: 0, height: 0 })
   const previousFit = useRef(null)
-  const margin = compact ? 14 : area.width <= 600 ? 28 : 80
-  const fit = Math.min(1, Math.max(.05, Math.min((area.width - margin) / width, (area.height - margin) / height)))
+  const spacious = area.width >= 900 && area.height >= 570
+  const margin = spacious ? 44 : 14
+  const fit = clamp(Math.min((area.width - margin) / width, (area.height - margin) / height), .05, spacious ? 2 : 1)
 
   useLayoutEffect(() => {
     const element = viewport.current

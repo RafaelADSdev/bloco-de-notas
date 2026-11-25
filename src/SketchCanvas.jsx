@@ -16,10 +16,10 @@ function pinch(touches, view) {
   }
 }
 
-export function SketchCanvas({ drawing, active, tool, settings, renderer, imageVersion, selection, setSelection, addOperation, pickColor, insertText, space, showHelp, status, compact, recordFrame, positionTarget, positionGuide }) {
+export function SketchCanvas({ drawing, active, tool, settings, renderer, imageVersion, selection, setSelection, addOperation, pickColor, insertText, space, showHelp, status, recordFrame, positionTarget, positionGuide }) {
   const { width, height } = drawing
   const frame = drawingFrame(drawing)
-  const view = useSketchView(frame.width, frame.height, compact)
+  const view = useSketchView(frame.width, frame.height)
   const canvas = useRef(null)
   const gesture = useRef(null)
   const fingers = useRef(new Map())
@@ -103,7 +103,7 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
       event.preventDefault()
       return positionGuide(point)
     }
-    if (tool === 'hand' || space || event.button === 1 || (touch && (settings.penOnly || (compact && !onPaper)))) {
+    if (tool === 'hand' || space || event.button === 1 || (touch && (settings.penOnly || !onPaper))) {
       event.preventDefault()
       capture(event, { type: 'pan', x: event.clientX, y: event.clientY, view: view.latest.current, touch })
       setPanning(true)
@@ -248,7 +248,7 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
     width: `${width / frame.width * 100}%`, height: `${height / frame.height * 100}%`,
     left: `${-frame.x / frame.width * 100}%`, top: `${-frame.y / frame.height * 100}%`,
   } : undefined
-  return <main className={'studio-workspace' + (compact ? ' studio-workspace-compact' : '')}>
+  return <main className="studio-workspace">
     <div ref={view.viewport} className="studio-viewport" style={{ cursor }}
       onPointerDown={start} onPointerMove={move} onPointerUp={end}
       onPointerCancel={(event) => end(event, true)}>
@@ -256,19 +256,17 @@ export function SketchCanvas({ drawing, active, tool, settings, renderer, imageV
         <canvas ref={canvas} width={width} height={height} style={canvasStyle} aria-label="Área de desenho" />
         <SketchGuides frame={frame} guide={settings.guide} symmetry={settings.symmetry} settings={settings} selection={overlay ?? selection} />
       </div>
-      {compact && status && <div className="studio-touch-status" role="status">{status}</div>}
+      {status && <div className="studio-touch-status" role="status">{status}</div>}
     </div>
     <div className="studio-viewbar">
-      {!compact && <div className="studio-view-status"><span>{frame.width} × {frame.height} px</span>{status && <span role="status">{status}</span>}</div>}
       <div className="studio-zoom" role="group" aria-label="Visualização da tela">
         <IconButton label="Espelhar visualização" aria-pressed={view.view.flipped} onClick={view.flip}><FlipHorizontal2 size={16} /></IconButton>
         <IconButton label="Girar visualização" onClick={view.rotate}><RotateCw size={15} /></IconButton>
         <IconButton label="Diminuir zoom" disabled={view.view.zoom <= .25} onClick={() => view.zoom(.8)}><Minus size={16} /></IconButton>
-        {compact ? <IconButton className="studio-touch-fit" label="Enquadrar tela" onClick={view.reset}>
+        <IconButton className="studio-touch-fit" label="Enquadrar tela" onClick={view.reset}>
           <Scan size={16} /><span>{Math.round(view.view.zoom * 100)}%</span>
-        </IconButton> : <output aria-label="Zoom">{Math.round(view.view.zoom * 100)}%</output>}
+        </IconButton>
         <IconButton label="Aumentar zoom" disabled={view.view.zoom >= 8} onClick={() => view.zoom(1.25)}><Plus size={16} /></IconButton>
-        {!compact && <IconButton label="Enquadrar tela" onClick={view.reset}><Scan size={16} /></IconButton>}
         <IconButton className="studio-help" label="Atalhos e gestos" onClick={showHelp}><CircleHelp size={17} /></IconButton>
       </div>
     </div>
