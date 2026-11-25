@@ -16,7 +16,7 @@
 
 - **Organizar a biblioteca.** Crie cadernos, notas de texto, quadros e pastas. Encontre documentos pela busca ou pelo tipo de arquivo e alterne entre grade e lista.
 - **Escrever e anotar.** Escolha papel pautado, quadriculado, pontilhado ou em branco. Escreva à mão, marque trechos de um PDF e adicione textos, figuras ou gravações de áudio aos documentos.
-- **Desenhar em camadas.** Trabalhe com pincéis, simetria e guias no estúdio de desenho. Exporte em PNG, PNG transparente ou JPEG.
+- **Desenhar em camadas.** Use **Novo desenho** e **Salvar** na barra do estúdio. Reabra trabalhos editáveis em **Desenhos** ou exporte em PNG, PNG transparente ou JPEG.
 - **Levar uma cópia.** Importe PDF, TXT ou uma cópia JSON do Linha Clara. Exporte um documento em PDF ou baixe a biblioteca em um arquivo JSON editável.
 
 ![Biblioteca do Linha Clara no tema escuro, com busca, filtros, favoritos, pastas e capas de documentos.](docs/media/biblioteca.webp)
@@ -28,7 +28,7 @@ O tema escuro destaca o papel e as ferramentas ativas. O seletor da biblioteca a
 
 ![Editor de texto com uma nota de leitura aberta em uma folha clara.](docs/media/editor.webp)
 
-![Estúdio de desenho com pincéis à esquerda, tela ao centro e camadas à direita.](docs/media/estudio.webp)
+![Estúdio de desenho com Novo desenho e Salvar na barra superior, pincéis à esquerda e camadas à direita.](docs/media/estudio.webp)
 
 <p align="center">
   <img src="docs/media/celular.webp" width="360" alt="Biblioteca no celular com botão Novo, busca e filtros acima das capas." />

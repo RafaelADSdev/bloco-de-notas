@@ -68,6 +68,7 @@ export function DrawingHelp({ close }) {
       <div><dt>Seleção / laço / texto</dt><dd><kbd>M</kbd> <kbd>L</kbd> <kbd>T</kbd></dd></div>
       <div><dt>Mover a tela</dt><dd><kbd>H</kbd> ou segure <kbd>Espaço</kbd></dd></div>
       <div><dt>Desfazer / refazer</dt><dd><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Shift+Z</kbd></dd></div>
+      <div><dt>Salvar desenho</dt><dd><kbd>Ctrl+S</kbd> ou <kbd>⌘+S</kbd></dd></div>
       <div><dt>Zoom</dt><dd>Roda do mouse ou pinça</dd></div>
       <div><dt>Girar e mover a tela ao toque</dt><dd>Use dois dedos</dd></div>
       <div><dt>Mover uma seleção</dt><dd>Arraste de dentro dela</dd></div>

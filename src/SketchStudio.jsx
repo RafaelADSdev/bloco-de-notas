@@ -14,13 +14,13 @@ export default function SketchStudio({ leave }) {
   const [storage, setStorage] = useState('loading')
   const [dialog, setDialog] = useState(null)
 
-  const save = useCallback((next) => {
+  const save = useCallback((next, manual = false) => {
     current.current = next
     setStudio(next)
     if (!canStore.current) return
     setStorage('saving')
     writeStudio(next).then(() => {
-      if (current.current === next) setStorage('saved')
+      if (current.current === next) setStorage(manual ? 'confirmed' : 'saved')
     }).catch(() => {
       if (current.current === next) setStorage('error')
     })
@@ -44,11 +44,11 @@ export default function SketchStudio({ leave }) {
     return () => { open = false }
   }, [save])
 
-  const saveDrawing = useCallback((drawing) => {
+  const saveDrawing = useCallback((drawing, manual = false) => {
     const prev = current.current
     const existing = prev.drawings.find((entry) => entry.id === drawing.id)
-    if (!existing || existing === drawing) return
-    save({ ...prev, drawings: prev.drawings.map((entry) => entry.id === drawing.id ? drawing : entry) })
+    if (!existing || (!manual && existing === drawing)) return
+    save({ ...prev, drawings: prev.drawings.map((entry) => entry.id === drawing.id ? drawing : entry) }, manual)
   }, [save])
 
   function open(id) {
@@ -74,10 +74,10 @@ export default function SketchStudio({ leave }) {
   const drawing = studio.drawings.find((entry) => entry.id === studio.active) ?? studio.drawings[0]
   return <div className="studio-app">
     <SketchEditor key={drawing.id} initial={drawing} leave={leave} save={saveDrawing} storage={storage} clipboard={clipboard}
-      gallery={() => setDialog({ type: 'gallery' })} externalDialog={Boolean(dialog)} />
+      newDrawing={() => setDialog({ type: 'new' })} gallery={() => setDialog({ type: 'gallery' })} externalDialog={Boolean(dialog)} />
     {dialog?.type === 'gallery' && <DrawingGallery drawings={studio.drawings} current={drawing.id} open={open}
-      create={() => setDialog({ type: 'new' })} remove={(target) => setDialog({ type: 'remove', target })} close={() => setDialog(null)} />}
-    {dialog?.type === 'new' && <DrawingNameForm title="Novo desenho" create submit={create} close={() => setDialog({ type: 'gallery' })} />}
+      create={() => setDialog({ type: 'new', fromGallery: true })} remove={(target) => setDialog({ type: 'remove', target })} close={() => setDialog(null)} />}
+    {dialog?.type === 'new' && <DrawingNameForm title="Novo desenho" create submit={create} close={() => setDialog(dialog.fromGallery ? { type: 'gallery' } : null)} />}
     {dialog?.type === 'remove' && <Dialog title="Excluir desenho?" close={() => setDialog({ type: 'gallery' })}>
       <p>Excluir “{dialog.target.name}” da galeria deste navegador?</p>
       <div className="dialog-actions">

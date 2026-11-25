@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, Download, Expand, ImagePlus, Images, Minimize2, Pencil, Square } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Download, Expand, ImagePlus, Images, Minimize2, Pencil, Plus, Save, Square } from 'lucide-react'
 import { IconButton, Menu, MenuOption } from './ui'
 import { SketchCanvas } from './SketchCanvas'
 import { DrawingHelp, DrawingNameForm, DrawingTextForm } from './SketchDialogs'
@@ -8,9 +8,14 @@ import { bounds, brushes, clamp, drawingFrame, editHistory, newLayer, numberedLa
 import { bitmap, captureRegion, encode, imageLayer } from './sketch-raster'
 import { studioRenderer } from './sketch-render'
 
-const storageLabels = { saved: 'Salvo neste navegador', saving: 'Salvando…', error: 'O navegador não salvou as alterações' }
+const storageLabels = {
+  saved: 'Salvo neste navegador',
+  confirmed: 'Desenho salvo neste navegador',
+  saving: 'Salvando…',
+  error: 'O navegador não salvou as alterações',
+}
 
-export function SketchEditor({ initial, leave, save, storage, gallery, clipboard, externalDialog }) {
+export function SketchEditor({ initial, leave, save, storage, newDrawing, gallery, clipboard, externalDialog }) {
   const [history, edit] = useReducer(editHistory, { drawing: initial, past: [], future: [] })
   const { drawing } = history
   const [tool, setTool] = useState('pencil')
@@ -174,6 +179,11 @@ export function SketchEditor({ initial, leave, save, storage, gallery, clipboard
         setSelection(null)
         return
       }
+      if ((event.ctrlKey || event.metaKey) && key === 's' && !event.altKey && !event.shiftKey) {
+        event.preventDefault()
+        if (!busy && !event.repeat) save(drawing, true)
+        return
+      }
       if (event.target.closest('input, textarea, select, [contenteditable]')) return
       if ((event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y')) {
         event.preventDefault()
@@ -282,12 +292,18 @@ export function SketchEditor({ initial, leave, save, storage, gallery, clipboard
         <span className="studio-storage" role="status" data-status={storage}>{storageLabels[storage]}</span>
       </div>
       <div className="studio-header-actions">
-        <button type="button" className="studio-gallery-button" aria-label="Meus desenhos" onClick={gallery}><Images size={18} /><span>Desenhos</span></button>
+        <button type="button" className="button secondary studio-new" aria-label="Novo desenho" aria-haspopup="dialog" disabled={busy} onClick={newDrawing}>
+          <Plus size={17} /><span>Novo<span className="studio-new-suffix"> desenho</span></span>
+        </button>
+        <button type="button" className="button primary studio-save" aria-label="Salvar desenho" aria-keyshortcuts="Control+S Meta+S" disabled={busy} onClick={() => save(drawing, true)}>
+          <Save size={17} />Salvar
+        </button>
+        <button type="button" className="studio-gallery-button" aria-label="Meus desenhos" aria-haspopup="dialog" title="Meus desenhos" disabled={busy} onClick={gallery}><Images size={18} /><span>Desenhos</span></button>
         <IconButton label="Importar imagem" disabled={busy} onClick={() => input.current.click()}><ImagePlus size={19} /></IconButton>
         <input ref={input} type="file" hidden accept="image/*" onChange={importImage} />
         <IconButton label={focused ? 'Mostrar ferramentas' : 'Modo foco'} aria-pressed={focused}
           onClick={() => { setFocused(!focused); setPanel(null) }}>{focused ? <Minimize2 size={18} /> : <Expand size={18} />}</IconButton>
-        <Menu label="Exportar desenho" trigger={(props) => <button {...props} type="button" disabled={busy} className="studio-export"><Download size={17} /><span>Exportar</span></button>}>
+        <Menu label="Exportar desenho" trigger={(props) => <button {...props} type="button" title="Exportar desenho" disabled={busy} className="button secondary studio-export"><Download size={17} /><span>Exportar</span></button>}>
           <MenuOption onClick={() => exportImage('png')}>Baixar PNG</MenuOption>
           <MenuOption onClick={() => exportImage('transparent')}>Baixar PNG transparente</MenuOption>
           <MenuOption onClick={() => exportImage('jpeg')}>Baixar JPEG</MenuOption>
