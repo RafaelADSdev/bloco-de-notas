@@ -80,7 +80,7 @@ const sorters = {
   name: (a, b) => a.title.localeCompare(b.title, 'pt-BR'),
   oldest: (a, b) => a.updated - b.updated,
 }
-export function Library({ items, section, folderId, select, open, create, act, busy, storageError, backup, help, theme, changeTheme, motionSettings }) {
+export function Library({ items, section, folderId, select, open, create, act, busy, storageError, backup, help, theme, changeTheme, motionSettings, checkUpdates, updateNotice }) {
   const [query, setQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [sort, setSort] = useState('recent')
@@ -181,6 +181,7 @@ export function Library({ items, section, folderId, select, open, create, act, b
         </select>
       </label>
       <button type="button" className="android-setting-row" onClick={motionSettings}><Sparkles size={22} /><span>Animações</span><ChevronRight size={18} /></button>
+      {checkUpdates && <button type="button" className="android-setting-row" onClick={checkUpdates}><ArrowDownToLine size={22} /><span>Verificar atualizações</span><ChevronRight size={18} /></button>}
     </section>
     <section aria-label="Arquivos e armazenamento">
       <button type="button" className="android-setting-row" onClick={() => create('import', null)}><Upload size={22} /><span>Importar arquivos</span><ChevronRight size={18} /></button>
@@ -229,6 +230,7 @@ export function Library({ items, section, folderId, select, open, create, act, b
             <MenuOption icon={ArrowDownToLine} onClick={backup}>Baixar cópia da biblioteca</MenuOption>
             <MenuOption icon={Upload} onClick={() => create('import', null)}>Importar cópia ou arquivo</MenuOption>
             <MenuOption icon={Sparkles} onClick={motionSettings}>Animações</MenuOption>
+            {checkUpdates && <MenuOption icon={ArrowDownToLine} onClick={checkUpdates}>Verificar atualizações</MenuOption>}
             <MenuOption icon={CircleHelp} onClick={help}>Sobre o armazenamento</MenuOption>
           </Menu>
         </div>
@@ -245,6 +247,7 @@ export function Library({ items, section, folderId, select, open, create, act, b
             : !isAndroidApp && section !== 'trash' && <NewMenu create={create} />}
           {isAndroidApp && section === 'home' && !folder && <span className="android-app-mark" aria-hidden="true"><Brand /></span>}
         </div>
+        {section === 'home' && !folder && updateNotice}
         {section === 'settings' && isAndroidApp ? settings : <>
         <div className="library-controls">
           <div className="search-box">

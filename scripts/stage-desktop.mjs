@@ -6,6 +6,10 @@ const { name, productName, version, main, description } = JSON.parse(await readF
 
 await rm(new URL('dist/', stage), { recursive: true, force: true })
 await mkdir(new URL('desktop/', stage), { recursive: true })
+await mkdir(new URL('src/', stage), { recursive: true })
 await cp(new URL('dist/', root), new URL('dist/', stage), { recursive: true })
 await cp(new URL(main, root), new URL(main, stage))
+await cp(new URL('desktop/platform.cjs', root), new URL('desktop/platform.cjs', stage))
+await cp(new URL('desktop/windows-updates.cjs', root), new URL('desktop/windows-updates.cjs', stage))
+await cp(new URL('src/release-updates.mjs', root), new URL('src/release-updates.mjs', stage))
 await writeFile(new URL('package.json', stage), JSON.stringify({ name, productName, version, main, description }))

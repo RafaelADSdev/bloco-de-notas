@@ -15,16 +15,24 @@
 
 ## Baixe o Linha Clara
 
-Abra a [prévia multiplataforma 1.0.5](https://github.com/RafaelADSdev/bloco-de-notas/releases/tag/v1.0.5-multiplataforma) e escolha um arquivo em **Assets**.
+Abra a [prévia multiplataforma 1.0.6](https://github.com/RafaelADSdev/bloco-de-notas/releases/tag/v1.0.6-multiplataforma) e escolha um arquivo em **Assets**.
 
 | Plataforma | Arquivo | Instalação |
 | --- | --- | --- |
-| Windows de 64 bits | `Linha-Clara-1.0.5-windows-x64.exe` | Execute o instalador. O EXE desta prévia é distribuído sem assinatura Authenticode. |
-| macOS 13 ou posterior, Apple Silicon | `Linha-Clara-1.0.5-macos-arm64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
-| macOS 13 ou posterior, Intel | `Linha-Clara-1.0.5-macos-x86_64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
-| Android 7.0 ou posterior | `Linha-Clara-1.0.5-android.apk` | Abra o APK no aparelho e siga as instruções de instalação. |
+| Windows de 64 bits | `Linha-Clara-1.0.6-windows-x64.exe` | Execute o instalador. O EXE desta prévia é distribuído sem assinatura Authenticode. |
+| macOS 13 ou posterior, Apple Silicon | `Linha-Clara-1.0.6-macos-arm64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
+| macOS 13 ou posterior, Intel | `Linha-Clara-1.0.6-macos-x86_64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
+| Android 7.0 ou posterior | `Linha-Clara-1.0.6-android.apk` | Abra o APK no aparelho e siga as instruções de instalação. |
 
 O APK usa uma assinatura de teste. Os apps para macOS têm assinatura *ad hoc* e são distribuídos sem notarização da Apple.
+
+### Atualizações no aplicativo
+
+A versão 1.0.6 precisa ser instalada uma vez para habilitar os avisos de atualização. Depois, o Linha Clara consulta o GitHub ao abrir e mostra um aviso na biblioteca quando encontra uma versão compatível mais recente. No Windows, **Baixar e instalar** verifica a integridade do instalador e reabre o aplicativo após a atualização. No macOS e Android, **Baixar atualização** abre o pacote no navegador para instalação pelo usuário. Para verificar manualmente, abra **Opções do espaço** no Windows ou macOS e **Ajustes** no Android.
+
+Para disponibilizar uma atualização, publique uma GitHub Release com a tag `vX.Y.Z` ou `vX.Y.Z-multiplataforma`. Anexe os instaladores seguindo o padrão acima e substitua a versão no nome dos arquivos. A verificação aceita releases e prévias públicas com o arquivo do dispositivo.
+
+Para instalar o APK sobre a versão anterior, mantenha a chave de assinatura e use um `versionCode` maior em cada release. [Assinatura do Android](https://developer.android.com/studio/publish/app-signing) · [Versionamento do Android](https://developer.android.com/studio/publish/versioning)
 
 ## O que dá para fazer
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, net, protocol, session, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, net, protocol, session, shell } = require('electron')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
@@ -7,6 +7,20 @@ const appUrl = scheme + '://app'
 const isLocal = (value) => {
   const url = URL.parse(value)
   return url?.protocol === scheme + ':' && url.host === 'app'
+}
+
+const canInstallUpdates = process.platform === 'win32' && process.arch === 'x64' && app.isPackaged
+
+if (canInstallUpdates) {
+  if (!app.requestSingleInstanceLock()) {
+    app.quit()
+    return
+  }
+  app.on('second-instance', () => {
+    const [window] = BrowserWindow.getAllWindows()
+    if (window?.isMinimized()) window.restore()
+    window?.focus()
+  })
 }
 
 protocol.registerSchemesAsPrivileged([{
@@ -42,7 +56,13 @@ function openWindow() {
     minHeight: 480,
     backgroundColor: '#181715',
     show: false,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: {
+      preload: path.join(__dirname, 'platform.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      additionalArguments: canInstallUpdates ? ['--linha-clara-installer'] : [],
+    },
   })
 
   window.webContents.on('will-navigate', (event, url) => {
@@ -60,6 +80,7 @@ function openWindow() {
 
 app.whenReady().then(() => {
   protocol.handle(scheme, (request) => serveAsset(request))
+  if (canInstallUpdates) require('./windows-updates.cjs').registerWindowsUpdates(app, ipcMain, isLocal)
   session.defaultSession.setPermissionCheckHandler((_contents, name, origin, details) =>
     name === 'media' && isLocal(origin) && details.mediaType === 'audio')
   session.defaultSession.setPermissionRequestHandler((_contents, name, callback, details) =>

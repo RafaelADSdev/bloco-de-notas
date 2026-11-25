@@ -6,6 +6,7 @@ import { Welcome } from './Welcome'
 import { descendants, downloadBackup, isTrashed, newItem, readBackup, starterItems, uid } from './model'
 import { readLibrary, writeLibrary } from './storage'
 import { isAndroidApp, styleAndroidBars } from './android-platform'
+import { supportsUpdates, UpdateDialog, UpdateNotice, useAppUpdates } from './AppUpdates'
 
 const Editor = lazy(() => import('./Editor'))
 const SketchStudio = lazy(() => import('./SketchStudio'))
@@ -36,6 +37,7 @@ export default function App() {
   const toastTimer = useRef(null)
   const importInput = useRef(null)
   const importFolder = useRef(null)
+  const updates = useAppUpdates()
 
   useEffect(() => {
     let cancelled = false
@@ -272,6 +274,10 @@ export default function App() {
   const validFolder = folder && folder.type === 'folder' && !isTrashed(folder, index) ? folder.id : null
 
   const close = () => setDialog(null)
+  function openUpdates(checkNow) {
+    if (checkNow) void updates.check(true)
+    setDialog({ type: 'updates' })
+  }
   const exportLibrary = async () => {
     try {
       if (await downloadBackup(latest.current)) notify('Cópia da biblioteca salva.')
@@ -291,6 +297,8 @@ export default function App() {
         <SketchStudio view={route.section} navigate={library} leave={() => library()} showGallery={() => library('drawings')} showEditor={() => library('studio')} />
       </Suspense> : <Library items={items} section={route.section} folderId={validFolder} select={library} open={open} create={requestCreate} act={act}
           busy={!ready} storageError={storageError} backup={exportLibrary} help={() => setDialog({ type: 'help' })}
+          checkUpdates={supportsUpdates ? () => openUpdates(true) : undefined}
+          updateNotice={updates.showNotice && <UpdateNotice release={updates.release} open={() => openUpdates(false)} dismiss={updates.dismiss} />}
           theme={theme} changeTheme={changeTheme} motionSettings={() => setDialog({ type: 'motion' })} />}
     <input ref={importInput} type="file" accept={importAccept} multiple hidden onChange={(event) => {
       const files = Array.from(event.currentTarget.files)
@@ -303,6 +311,7 @@ export default function App() {
       <IconButton label="Fechar aviso" onClick={() => setMessage(null)}><X size={16} /></IconButton>
     </div>}
     {dialog?.type === 'create' && <CreateDialog key={dialog.itemType} type={dialog.itemType} close={close} create={create} />}
+    {dialog?.type === 'updates' && <UpdateDialog {...updates} close={close} canInstall={ready && !busyImport && !storageError} />}
     {dialog?.type === 'import' && <Dialog title="Importar arquivos" close={close}>
       <p className="dialog-copy" id="import-formats">Selecione PDFs, arquivos TXT ou cópias JSON do Linha Clara.</p>
       <form onSubmit={(event) => {
