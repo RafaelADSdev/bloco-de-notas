@@ -16,7 +16,7 @@ A biblioteca reúne cadernos, notas de texto, quadros brancos, PDFs e pastas. O 
 
 ## Capabilities and Constraints
 
-Os documentos e desenhos ficam no navegador. A biblioteca importa PDF, TXT e cópias JSON. A pessoa pode baixar uma cópia editável, exportar documentos como PDF e exportar desenhos como imagem. O acesso ao Goodnotes é um link para o site oficial.
+Os documentos e desenhos ficam no navegador. A biblioteca importa PDF, TXT e cópias JSON. A pessoa pode baixar uma cópia editável, exportar documentos como PDF e exportar desenhos como imagem.
 
 O app abre no tema escuro e guarda a escolha de tema no navegador. A aparência da interface é independente das cores da página, da tinta e do desenho.
 

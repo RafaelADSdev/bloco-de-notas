@@ -60,14 +60,8 @@
 }
 .welcome-footer { min-height: 57px; border-top: 1px solid var(--line); }
 .welcome-footer nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0 21px; }
-.welcome-footer button, .welcome-footer a { min-height: 40px; display: inline-flex; align-items: center; gap: 5px; background: none; padding: 0; border: 0; text-decoration: none; color: var(--muted); font-size: 12px; }
-.welcome-footer a { color: var(--accent); }
-.welcome-footer button:hover, .welcome-footer a:hover { text-decoration: underline; }
-.welcome-external-domain { display: inline-flex; align-items: center; gap: 4px; }
-.welcome-sign-in { margin-top: 17px; padding-top: 13px; border-top: 1px solid var(--line); }
-.welcome-sign-in h3 { margin: 0; font-size: 15px; }
-.welcome-sign-in-links { display: grid; justify-items: start; gap: 9px; margin-top: 12px; }
-.welcome-sign-in-links a { display: inline-flex; gap: 5px; align-items: center; color: var(--accent); font-size: 13px; }
+.welcome-footer button { min-height: 40px; display: inline-flex; align-items: center; background: none; padding: 0; border: 0; color: var(--muted); font-size: 12px; }
+.welcome-footer button:hover { text-decoration: underline; }
 
 @media (max-width: 950px) {
   .welcome-main { gap: 29px; }
@@ -86,7 +80,7 @@
   .welcome-visual img { min-height: 0; max-height: 340px; aspect-ratio: 1.68; object-position: 50% 67%; }
   .welcome-footer { padding-block: 5px; }
   .welcome-footer nav { gap: 0 14px; }
-  .welcome-footer button, .welcome-footer a { min-height: 44px; }
+  .welcome-footer button { min-height: 44px; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .welcome-visual img { animation: welcome-reveal 380ms var(--ease-out); }

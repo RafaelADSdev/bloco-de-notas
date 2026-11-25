@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { ArrowRight, ArrowUpRight, BookOpen, CircleHelp, Download, FilePlus2, Plus, Upload } from 'lucide-react'
+import { ArrowRight, BookOpen, CircleHelp, Download, FilePlus2, Plus, Upload } from 'lucide-react'
 import { Brand, Dialog } from './ui'
-
-const goodnotesSignIn = 'https://web.goodnotes.com/login'
 
 const information = {
   terms: {
@@ -62,23 +60,12 @@ export function Welcome({ create, ready, busyImport, storageError, backup }) {
       </div>
     </main>
     <footer className="welcome-footer" aria-label="Informações da página">
-      <nav aria-label="Termos e acesso externo">
+      <nav aria-label="Termos e políticas">
         {['terms', 'privacy', 'cookies'].map((key) => <button key={key} type="button" aria-haspopup="dialog" onClick={() => setInfo(key)}>{information[key].title}</button>)}
-        <a className="welcome-external" href={goodnotesSignIn} target="_blank" rel="noreferrer">
-          <span>Iniciar sessão no <span className="welcome-external-domain">Goodnotes <ArrowUpRight size={14} aria-hidden="true" /></span><span className="sr-only"> (abre em uma nova aba)</span></span>
-        </a>
       </nav>
     </footer>
     {details && <Dialog title={details.title} close={() => setInfo(null)}>
       <p className="dialog-copy">{details.text}</p>
-      {info === 'help' && <section className="welcome-sign-in" aria-labelledby="welcome-sign-in-title">
-        <h3 id="welcome-sign-in-title">Já tem uma conta Goodnotes?</h3>
-        <p className="dialog-copy">Acesse sua conta no site oficial pelo Google, Microsoft, Apple, início de sessão único (SSO) ou código único.</p>
-        <div className="welcome-sign-in-links">
-          <a href={goodnotesSignIn} target="_blank" rel="noreferrer">Iniciar sessão no site oficial <ArrowUpRight size={15} aria-hidden="true" /><span className="sr-only"> (abre em uma nova aba)</span></a>
-          <a href="mailto:support@goodnotesapp.com">Contactar o suporte do Goodnotes</a>
-        </div>
-      </section>}
       <footer className="dialog-actions">
         <button type="button" className="button secondary" onClick={() => setInfo(null)}>Fechar</button>
       </footer>
