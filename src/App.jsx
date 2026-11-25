@@ -185,15 +185,20 @@ export default function App() {
     if (imported && (currentRoute().page === 'welcome' || route.section !== 'home')) library('home', folder)
   }
 
-  function act(action, item) {
+  async function act(action, item) {
     if (action === 'favorite') {
       patch(item, { favorite: !item.favorite }, false)
       notify(item.favorite ? 'Removido dos favoritos.' : 'Adicionado aos favoritos.')
     }
     if (action === 'backup') {
       const ids = descendants(latest.current, item.id)
-      downloadBackup(latest.current.filter((entry) => ids.has(entry.id)), item.title)
-      notify('Cópia editável baixada.')
+      try {
+        if (await downloadBackup(latest.current.filter((entry) => ids.has(entry.id)), item.title)) {
+          notify('Cópia editável salva.')
+        }
+      } catch {
+        notify('Não foi possível salvar a cópia editável.', true)
+      }
     }
     if (action === 'trash') {
       patch(item, { deleted: true }, false)
@@ -224,9 +229,12 @@ export default function App() {
   const validFolder = folder && folder.type === 'folder' && !isTrashed(folder, index) ? folder.id : null
 
   const close = () => setDialog(null)
-  const exportLibrary = () => {
-    downloadBackup(latest.current)
-    notify('Cópia da biblioteca baixada.')
+  const exportLibrary = async () => {
+    try {
+      if (await downloadBackup(latest.current)) notify('Cópia da biblioteca salva.')
+    } catch {
+      notify('Não foi possível salvar a cópia da biblioteca.', true)
+    }
   }
 
   return <>

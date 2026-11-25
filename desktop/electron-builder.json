@@ -1,0 +1,15 @@
+{
+  "appId": "com.rafaeladsdev.linhaclara",
+  "productName": "Linha Clara",
+  "publish": null,
+  "beforeBuild": "desktop/before-build.cjs",
+  "directories": {
+    "app": ".native-build/desktop",
+    "output": ".native-build/windows"
+  },
+  "win": {
+    "target": ["nsis"],
+    "artifactName": "Linha-Clara-${version}-windows-${arch}.${ext}",
+    "icon": "desktop/icon.ico"
+  }
+}

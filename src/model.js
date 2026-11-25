@@ -1,3 +1,7 @@
+import { Capacitor, registerPlugin } from '@capacitor/core'
+
+const saveDocument = registerPlugin('SaveDocument')
+
 export const colors = {
   sage: ['#dce7d8', '#43634a', 'Sálvia'],
   clay: ['#f1ddd3', '#9b5242', 'Argila'],
@@ -142,19 +146,27 @@ export function readBackup(contents, destination) {
   })
 }
 
-export function saveFile(contents, type, name) {
-  const url = URL.createObjectURL(new Blob([contents], { type }))
+export async function saveFile(contents, type, name) {
+  const blob = new Blob([contents], { type })
+  if (Capacitor.getPlatform() === 'android') {
+    const dataUrl = await fileData(blob)
+    const result = await saveDocument.save({ name, type, data: dataUrl.slice(dataUrl.indexOf(',') + 1) })
+    return result.saved
+  }
+
+  const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = name
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 30000)
+  return true
 }
 
 export const fileName = (title) => title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-').trim() || 'documento'
 
 export function downloadBackup(items, title = 'Biblioteca Linha Clara') {
-  saveFile(JSON.stringify({ format: 'linha-clara', version: 1, items }), 'application/json', fileName(title) + '.linha.json')
+  return saveFile(JSON.stringify({ format: 'linha-clara', version: 1, items }), 'application/json', fileName(title) + '.linha.json')
 }
 
 export const fileData = (file) => new Promise((resolve, reject) => {

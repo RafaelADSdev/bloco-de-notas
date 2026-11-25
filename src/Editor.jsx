@@ -109,11 +109,18 @@ export default function Editor({ item, patch, leave, act, notify, storageError }
     setExporting(true)
     try {
       const { exportPdf } = await import('./export-pdf')
-      await exportPdf(item)
-      notify('PDF baixado.')
+      if (await exportPdf(item)) notify('PDF salvo.')
     } catch {
       notify('Não foi possível exportar este documento como PDF.', true)
     } finally { setExporting(false) }
+  }
+
+  async function saveEditableCopy() {
+    try {
+      if (await downloadBackup([item], item.title)) notify('Cópia editável salva.')
+    } catch {
+      notify('Não foi possível salvar a cópia editável.', true)
+    }
   }
 
   function selectTool(key) {
@@ -140,7 +147,7 @@ export default function Editor({ item, patch, leave, act, notify, storageError }
         {!rich && <IconButton label="Adicionar página" className="editor-add-button" onClick={() => addPage()} disabled={readOnly}><FilePlus2 size={19} /></IconButton>}
         <Menu label="Mais opções do documento" trigger={(props) => <button type="button" {...props} className="icon-button" title="Mais opções"><MoreHorizontal size={21} /></button>}>
           <MenuOption icon={ArrowDownToLine} onClick={downloadPdf} disabled={exporting}>Baixar PDF</MenuOption>
-          <MenuOption icon={Copy} onClick={() => { downloadBackup([item], item.title); notify('Cópia editável baixada.') }}>Baixar cópia editável</MenuOption>
+          <MenuOption icon={Copy} onClick={saveEditableCopy}>Baixar cópia editável</MenuOption>
           {rich && <MenuOption icon={Printer} onClick={() => window.print()}>Imprimir documento</MenuOption>}
           <MenuOption icon={Mic} onClick={() => setPanel({ type: 'audio' })}>Gravações de áudio</MenuOption>
           {!rich && <><hr />

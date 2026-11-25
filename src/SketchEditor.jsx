@@ -7,6 +7,7 @@ import { BrushPanel, LayerPanel, SketchContext, SketchToolbar, tools } from './S
 import { bounds, brushes, clamp, drawingFrame, editHistory, newLayer, numberedLayer, paper, shapes, transformPoints, updateLayer } from './sketch-model'
 import { bitmap, captureRegion, encode, imageLayer } from './sketch-raster'
 import { studioRenderer } from './sketch-render'
+import { fileName, saveFile } from './model'
 
 const storageLabels = {
   saved: 'Salvo neste navegador',
@@ -256,12 +257,7 @@ export function SketchEditor({ initial, leave, save, storage, newDrawing, galler
         output.getContext('2d').drawImage(surface, frame.x, frame.y, frame.width, frame.height, 0, 0, frame.width, frame.height)
       }
       const blob = await encode(output, png ? 'image/png' : 'image/jpeg', .94)
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = drawing.name.replace(/[<>:"/\\|?*]/g, '-').trim() + (png ? '.png' : '.jpg')
-      link.click()
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      await saveFile(blob, blob.type, fileName(drawing.name) + (png ? '.png' : '.jpg'))
     } catch {
       if (mounted.current) setMessage('Não foi possível exportar a imagem.')
     } finally {

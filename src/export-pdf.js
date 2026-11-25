@@ -142,5 +142,5 @@ export async function exportPdf(item) {
       if (loading) await loading.destroy()
     }
   }
-  saveFile(await target.save(), 'application/pdf', fileName(item.title) + '.pdf')
+  return saveFile(await target.save(), 'application/pdf', fileName(item.title) + '.pdf')
 }

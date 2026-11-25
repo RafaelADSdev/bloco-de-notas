@@ -1,16 +1,30 @@
 <h1 align="center">Linha Clara</h1>
 
 <p align="center">
-  Crie cadernos, anote PDFs e desenhe em camadas no navegador.
+  Crie cadernos, anote PDFs e desenhe em camadas no navegador, no computador ou no Android.
 </p>
 
 <p align="center">
+  <a href="#baixe-o-linha-clara">Downloads</a> ·
   <a href="#o-que-dá-para-fazer">Recursos</a> ·
   <a href="#rode-na-sua-máquina">Instalação</a> ·
   <a href="#seus-arquivos">Armazenamento</a>
 </p>
 
 ![Abertura do Linha Clara com fundo grafite, ações em âmbar e um caderno iluminado à direita.](docs/media/abertura.webp)
+
+## Baixe o Linha Clara
+
+Abra a [prévia multiplataforma 1.0.0](https://github.com/RafaelADSdev/bloco-de-notas/releases/tag/v1.0.0-multiplataforma) e escolha um arquivo em **Assets**.
+
+| Plataforma | Arquivo | Instalação |
+| --- | --- | --- |
+| Windows de 64 bits | `Linha-Clara-1.0.0-windows-x64.exe` | Execute o instalador. O EXE desta prévia é distribuído sem assinatura Authenticode. |
+| macOS 13 ou posterior, Apple Silicon | `Linha-Clara-1.0.0-macos-arm64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
+| macOS 13 ou posterior, Intel | `Linha-Clara-1.0.0-macos-x86_64.dmg` | Abra o DMG e arraste o app para **Aplicativos**. |
+| Android 7.0 ou posterior | `Linha-Clara-1.0.0-android.apk` | Abra o APK no aparelho e siga as instruções de instalação. |
+
+O APK usa uma assinatura de teste. Os apps para macOS têm assinatura *ad hoc* e são distribuídos sem notarização da Apple.
 
 ## O que dá para fazer
 
@@ -60,13 +74,19 @@ npm exec -- vite preview --host 127.0.0.1
 
 O build fica em `dist/` e inclui as entradas estáticas da biblioteca e do editor. A prévia de produção usa a porta `4173` quando disponível.
 
+### Gere os instaladores
+
+- **Windows x64.** No Windows, rode `npm run package:windows`. O EXE fica em `.native-build/windows/`.
+- **macOS.** Com [Zapp](https://github.com/Ironpark/zapp) disponível no PATH, rode `npm run package:macos`. O comando gera os dois DMGs em `.native-build/macos/`. Para empacotar em outro sistema, instale também o [rcodesign](https://github.com/indygreg/apple-platform-rs/releases). O sistema de arquivos precisa permitir links simbólicos para os frameworks do Electron.
+- **Android.** Instale o JDK 21 e o Android SDK 36. Ajuste `JAVA_HOME` e `ANDROID_HOME`, rode `npm run build:android` na raiz e, em `android/`, execute `./gradlew :app:assembleDebug` ou `gradlew.bat :app:assembleDebug` no Windows. O APK fica em `android/app/build/outputs/apk/debug/`.
+
 ## Seus arquivos
 
-O Linha Clara guarda a biblioteca e os desenhos no **IndexedDB** do navegador. Cada endereço e perfil tem seu próprio armazenamento. Use **Baixar cópia da biblioteca** para guardar os documentos ou transferi-los para outro navegador. Para recuperá-los, importe o JSON baixado. Exporte as imagens pelo próprio estúdio de desenho. Limpar os dados do site remove o conteúdo local.
+O Linha Clara guarda a biblioteca e os desenhos localmente em **IndexedDB**. Cada perfil de navegador ou instalação tem seu próprio armazenamento. Use **Baixar cópia da biblioteca** para transferir documentos. Para recuperá-los, importe o JSON baixado. Exporte as imagens pelo próprio estúdio de desenho. No Android, as exportações abrem o seletor de arquivos do sistema. Limpar os dados do site ou do aplicativo remove o conteúdo local.
 
 ## Como foi feito
 
-**React e Vite** para a aplicação, **Canvas 2D** para escrita e desenho e **PDF.js e pdf-lib** para abrir e exportar PDFs. A interface usa CSS próprio e fontes hospedadas com o aplicativo.
+**React e Vite** para a aplicação, **Canvas 2D** para escrita e desenho e **PDF.js e pdf-lib** para abrir e exportar PDFs. A interface usa CSS próprio e fontes hospedadas com o aplicativo. **Electron** empacota o app para Windows e macOS, e **Capacitor** leva a mesma interface para Android.
 
 - [Código da aplicação](src/)
 - [Sistema visual](DESIGN.md)
